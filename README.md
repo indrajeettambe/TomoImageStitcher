@@ -607,21 +607,6 @@ pip downloads the source tarball directly.
 It runs the build and install in one step.
 This works on any system with Python and pip.
 
-### Option 4: Use the Docker image (handles CUDA + deps)
-
-For beamline or HPC deployments where the CUDA stack is fixed:
-
-```bash
-docker pull ghcr.io/indrajeettambe/tomo-image-stitcher:latest
-docker run --gpus all -it ghcr.io/indrajeettambe/tomo-image-stitcher:latest
-```
-
-The image is based on `nvidia/cuda:12.x-runtime`.
-It includes Python, CuPy, SimpleITK, and the package.
-It needs the NVIDIA Container Toolkit on the host.
-Tagged releases (`v0.2.0`, `v0.2`, `latest`) and `main` are published.
-See `docker/` in the repo for the build files.
-
 ---
 
 ## Quick start

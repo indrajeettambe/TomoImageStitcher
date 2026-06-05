@@ -1,0 +1,93 @@
+# Install with: pip install -e .
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stitcher"
+version = "0.2.0"
+description = "GPU-accelerated 3D volumetric stitcher for tomographic and microscopy volumes."
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Endri Lacaj"},
+    {name = "Indrajeet Tambe"},
+]
+keywords = ["stitching", "tomography", "registration", "GPU", "CuPy", "volume-stitching", "3D"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Image Processing",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.10",
+    "scikit-learn>=1.2",
+    "h5py>=3.8",
+    "tifffile>=2023.4",
+    "imagecodecs>=2023.1",
+    "SimpleITK>=2.3",
+    "scikit-image>=0.20",
+    "matplotlib>=3.7",
+    "tqdm>=4.65",
+    "cupy-cuda12x>=13.0; sys_platform != 'darwin'",
+]
+
+[project.optional-dependencies]
+danmax = [
+    "ipywidgets>=8.0",
+    "pyFAI>=2023.1",
+    "pytz>=2023.3",
+]
+notebook = [
+    "jupyter>=1.0",
+    "ipykernel>=6.0",
+    "notebook>=7.0",
+]
+dev = [
+    "pytest>=7.3",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "flake8>=6.0",
+    "isort>=5.12",
+]
+all = ["stitcher[danmax,notebook,dev]"]
+
+[project.urls]
+Homepage = "https://github.com/<your-org>/stitcher-v0-2"
+Issues = "https://github.com/<your-org>/stitcher-v0-2/issues"
+Documentation = "https://github.com/<your-org>/stitcher-v0-2/tree/main/docs"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["stitcher*"]
+
+[tool.setuptools.package-data]
+stitcher = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-ra --strict-markers"
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+    "gpu: marks tests that require a CUDA-capable GPU",
+]

@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  cpu:
+    name: CPU tests (no GPU)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install package (CPU only)
+        run: |
+          python -m pip install --upgrade pip
+          # Skip the cupy-cuda12x default dep on CI; we only run the CPU tests.
+          python -m pip install -e .[dev] --no-deps
+          python -m pip install numpy scipy scikit-learn h5py tifffile \
+              imagecodecs SimpleITK scikit-image matplotlib tqdm
+      - name: Lint
+        run: |
+          python -m pip install flake8
+          # E501: line too long, W503: line break before operator
+          flake8 src/ tests/ --max-line-length=100 --extend-ignore=E501,W503
+      - name: Run CPU tests
+        run: |
+          python -m pip install pytest pytest-cov
+          pytest tests/test_utilities.py -v --cov=stitcher --cov-report=term-missing
+
+  gpu:
+    name: GPU tests
+    runs-on: [self-hosted, gpu]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install package with GPU support
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cupy-cuda12x
+          python -m pip install -e .[dev]
+      - name: Run GPU tests
+        run: |
+          pytest tests/ -v -m gpu --cov=stitcher --cov-report=term-missing

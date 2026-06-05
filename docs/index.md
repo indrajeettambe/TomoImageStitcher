@@ -1,8 +1,9 @@
 # TomoImageStitcher — Documentation
 
 GPU-accelerated, sub-pixel accurate 3D volumetric stitcher for tomographic
-and large-volume microscopy datasets. Originally developed at the **DanMAX**
-beamline (MAX IV Laboratory, Sweden).
+and large-volume microscopy datasets. Originally developed for stitching
+local X-ray tomography volumes for the Experiment at the **DanMAX**
+beamline, Sweden.
 
 ## Contents
 

@@ -11,8 +11,7 @@ sub-volumes acquired on a translation (and optionally rotation) stage and
 produces a single seamless volume with mask-aware blending and optional
 intensity equalization.
 
-> Originally developed at the **DanMAX** beamline (MAX IV Laboratory, Sweden)
-> for stitching of X-ray tomography reconstructions and projection volumes.
+> Originally developed for stitching local X-ray tomography volumes for the Experiment at the **DanMAX** beamline, Sweden.
 
 ---
 

@@ -20,6 +20,7 @@ intensity equalization.
 
 - [Why TomoImageStitcher?](#why-tomoimagestitcher)
 - [Key features](#key-features)
+- [Where you can use it](#where-you-can-use-it)
 - [How it works](#how-it-works)
 - [Installation](#installation)
 - [Quick start](#quick-start)
@@ -65,6 +66,133 @@ specifically for **3D sub-volumes** with the following goals in mind:
 | Distance-map blending | Smooth radial / squared / directional blend with `alpha` exponent |
 | HDF5 I/O | Reads NeXus-style, DanMAX-style and generic h5 layouts |
 | Save intermediate data | Registration results, layer metadata, etc. |
+
+---
+
+## Where you can use it
+
+TomoImageStitcher was built for stitching 3D sub-volumes.
+The core is a sub-pixel registration engine.
+It runs on the GPU.
+The use cases below share the same need.
+A single scan is too small.
+A single scan is too low resolution.
+Many scans tile the full region.
+TomoImageStitcher joins them.
+
+### Synchrotron X-ray tomography and microtomography
+
+Modern synchrotrons produce 3D volumes at sub-micron resolution.
+A single field of view rarely covers a full sample.
+The motor stage moves the sample in small steps.
+Each step records a sub-volume.
+Sub-volumes overlap by a small amount.
+TomoImageStitcher registers each overlap.
+It builds the full 3D image from the tiles.
+
+TomoImageStitcher was developed at the DanMAX beamline.
+DanMAX is at the MAX IV Laboratory in Sweden.
+The pipeline runs on the beamline compute nodes.
+It handles translation and rotation acquisitions.
+Mask-aware blending avoids background bleed.
+The output is a single seamless volume.
+The pipeline works with both transmission and fluorescence data.
+
+### Battery research
+
+Li-ion batteries need non-destructive 3D imaging.
+Researchers study electrodes, separators, and current collectors.
+Synchrotron microtomography gives the resolution needed.
+Multiple sub-volumes tile the full cell.
+TomoImageStitcher reconstructs the full cell.
+It supports coin, pouch, and cylindrical formats.
+The output is ready for segmentation and analysis.
+Internal short circuits and dendrite growth can be studied.
+
+### Materials science and metallurgy
+
+Engineered materials have microstructure at the micron scale.
+A single scan may not capture a representative volume.
+Stitcher tiles sub-volumes for a larger region.
+This gives statistically meaningful data.
+It is useful for composites, alloys, and porous media.
+The pipeline works for fibers and laminates.
+Additive manufacturing parts can be inspected.
+The output feeds into digital twins and FEM models.
+
+### Semiconductor and electronics inspection
+
+Modern chips contain hybrid bonds and through-silicon vias.
+These features sit at the sub-micron scale.
+Nano-CT imaging captures the internal structure.
+Multiple scans tile the area of interest.
+TomoImageStitcher combines them into one 3D model.
+The output supports failure analysis.
+It also supports process control.
+Bond integrity and TSV alignment can be verified.
+
+### Geology, petrophysics, and geo-energy
+
+Rock cores contain pores, fractures, and inclusions.
+Synchrotron tomography reveals the internal structure.
+Large cores need many overlapping scans.
+Stitcher combines them into a single volume.
+The output helps with reservoir characterisation.
+It supports CO₂ storage research.
+It also supports oil and gas extraction studies.
+Paleontology and soil science benefit too.
+
+### Life science and cleared-tissue microscopy
+
+The pipeline generalises to other 3D imaging modalities.
+Light-sheet microscopy produces terabyte-sized volumes.
+Many tiles are acquired across a cleared sample.
+TomoImageStitcher assembles them into one 3D image.
+This is useful for whole-organ imaging.
+It also works for cleared tissue and expanded samples.
+Mask-aware blending handles low-signal regions.
+The output feeds into neuron tracing and cell counting.
+
+### In vivo skin and dermatology
+
+Reflectance confocal microscopy produces 3D stacks.
+Multiphoton microscopy adds molecular contrast.
+A single stack rarely covers a clinical lesion.
+TomoImageStitcher combines adjacent stacks.
+Sub-pixel registration matters for diagnosis.
+The pipeline supports motion-tolerant reconstruction.
+It enables histology-like views of larger areas.
+Melanoma, vitiligo, and other conditions can be studied.
+
+### Optical coherence tomography (OCT)
+
+OCT produces high-speed 3D volumes of tissue.
+The lateral field of view is limited by the optics.
+Multiple volumes can be stitched to image larger areas.
+The same ZNCC plus Lucas–Kanade engine is used.
+This works for retinal and dermal OCT.
+It also works for coronary and endoscopic OCT.
+The output is a panoramic 3D view.
+
+### Industrial quality control and non-destructive testing
+
+Manufactured parts may have internal defects.
+TomoImageStitcher works for non-destructive testing.
+The pipeline runs on laboratory nano-CT systems.
+It supports offline and online workflows.
+The output is suitable for metrology.
+It also supports defect reporting.
+Aerospace, automotive, and additive parts can be inspected.
+
+### Cultural heritage and palaeontology
+
+Museum objects and fossils are often fragile.
+They cannot be cut or sectioned.
+Synchrotron tomography reveals their internal structure.
+Stitcher joins many sub-volumes.
+The output is a digital twin.
+It supports conservation and study.
+Paintings, mummies, and fossils can be imaged.
 
 ---
 

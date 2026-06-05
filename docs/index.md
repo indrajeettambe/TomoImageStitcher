@@ -5,6 +5,18 @@ and large-volume microscopy datasets. Originally developed for stitching
 local X-ray tomography volumes for the Experiment at the **DanMAX**
 beamline, Sweden.
 
+## Start here
+
+The best way to learn the pipeline is the **detailed walkthrough
+notebook** — it covers all six stages with explanations, parameter
+choices, and visualisations on a synthetic dataset:
+
+- [`../notebooks/02_full_pipeline.ipynb`](../notebooks/02_full_pipeline.ipynb)
+
+The mathematical details of the registration (ZNCC, IC-GN Lucas–Kanade,
+mask weighting) and blending (distance-map weighting) are described in
+[PUBLICATION].
+
 ## Contents
 
 | Page                                          | Description |
@@ -20,6 +32,7 @@ beamline, Sweden.
 - [GitHub repository](https://github.com/indrajeettambe/TomoImageStitcher)
 - [Project layout](../README.md#project-layout)
 - [Citation](../README.md#citation)
+- [Detailed walkthrough notebook](../notebooks/02_full_pipeline.ipynb)
 
 ## Why TomoImageStitcher?
 
@@ -37,4 +50,4 @@ specifically for **3D sub-volumes** with the following goals in mind:
   the rigid component.
 - Per-layer batching to deal with stage-z (height) stratification and
   rotation stages.
-- Intensity equalization through joint histograms of overlapping regions.
+- Intensity equalisation through joint histograms of overlapping regions.

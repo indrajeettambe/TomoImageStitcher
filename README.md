@@ -5,597 +5,74 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![CuPy](https://img.shields.io/badge/GPU-CuPy-76B900.svg)](https://cupy.dev/)
 
-A GPU-accelerated, sub-pixel accurate 3D volumetric stitcher for tomographic and
+A GPU-accelerated, sub-pixel accurate **3D volumetric stitcher** for tomographic and
 large-volume microscopy datasets. TomoImageStitcher registers overlapping 3D
-sub-volumes acquired on a translation (and optionally rotation) stage and
-produces a single seamless volume with mask-aware blending and optional
-intensity equalization.
+sub-volumes acquired on a translation (and optionally rotation) stage and produces
+a single seamless volume with mask-aware blending and optional intensity
+equalisation.
 
 > Originally developed for stitching local X-ray tomography volumes for the Experiment at the **DanMAX** beamline, Sweden.
 
----
-
-## Table of contents
-
-- [Why TomoImageStitcher?](#why-tomoimagestitcher)
-- [Key features](#key-features)
-- [Where you can use it](#where-you-can-use-it)
-- [How it works](#how-it-works)
-- [Pipeline stages in detail](#pipeline-stages-in-detail)
-- [Install without cloning](#install-without-cloning)
-- [Installation](#installation)
-- [Quick start](#quick-start)
-- [Documentation](#documentation)
-- [Project layout](#project-layout)
-- [Citation](#citation)
-- [Contributors](#contributors)
-- [License](#license)
+For a **detailed step-by-step walkthrough** of every pipeline stage with synthetic
+data, see [`notebooks/02_full_pipeline.ipynb`](notebooks/02_full_pipeline.ipynb).
+For the mathematical details of the registration, see **[PUBLICATION]**.
 
 ---
 
-## Why TomoImageStitcher?
+## What is it
 
-Most off-the-shelf stitching tools (ImageJ/Fiji Grid/Collection stitching,
-BigStitcher, etc.) are designed for 2D tiles. TomoImageStitcher is built
-specifically for **3D sub-volumes** with the following goals in mind:
+TomoImageStitcher stitches together a set of **overlapping 3D sub-volumes**
+(typically reconstructed tomography volumes) into **one seamless volume**.
+Each stage is a Python call on the `Stitcher` object, so you can inspect and
+re-run any stage on its own.
 
-- **Sub-pixel registration** via a ZNCC pixel search followed by an
-  Inverse-Compositional Gauss–Newton (IC-GN) Lucas–Kanade refinement.
-- **GPU acceleration** of every heavy step (correlate, Lucas–Kanade, Gaussian
-  filtering, affine transform) through CuPy.
-- **Mask-aware interpolation** so that background (zero) pixels never bleed
-  into the foreground when blending.
-- **Affine or rigid** transformations per pair, with optional extraction of
-  the rigid component.
-- **Per-layer batching** to deal with stage-z (height) stratification and
-  rotation stages.
-- **Intensity equalization** through joint histograms of overlapping regions.
+The pipeline runs in **six stages**:
 
----
+| # | Stage | What it does |
+|---|-------|--------------|
+| 1 | **Organise sub-volumes** | Classify into z-layers, compute global padding, find intersections. |
+| 2 | **Registration** | ZNCC pixel search + IC-GN Lucas–Kanade refinement per pair. |
+| 3 | **Accumulate displacements** | Chain per-pair shifts into a global warp graph (BFS). |
+| 4 | **Equalisation** | Match intensities across overlaps via joint histograms. |
+| 5 | **Blending** | Distance-map blending onto the global canvas, on the GPU. |
+| 6 | **Save and inspect** | Write per-layer `.h5` files with full pipeline metadata. |
 
-## Key features
-
-| Feature | Description |
-|---|---|
-| 3D ZNCC pixel search | Multi-stage downscaling correlation on overlapping intersections |
-| Lucas–Kanade refinement | IC-GN optimiser with optional affine or rigid warp |
-| Mask-aware correlation | Eroded binary mask removes interpolation artefacts at the borders |
-| Affine transform | Large-volume affine warp chunk-by-chunk on the GPU |
-| Translation-only path | SimpleITK-based shift for fast, memory-cheap stitching |
-| Layered stitching | Classifies sub-volumes into `z`-layers automatically |
-| Intensity equalization | Linear histogram matching in the overlap region |
-| Distance-map blending | Smooth radial / squared / directional blend with `alpha` exponent |
-| HDF5 I/O | Reads NeXus-style, DanMAX-style and generic h5 layouts |
-| Save intermediate data | Registration results, layer metadata, etc. |
+The full per-stage walk-through with the code for every step lives in the
+**detailed notebook** linked above. The math behind the registration and
+blending lives in [PUBLICATION].
 
 ---
 
 ## Where you can use it
 
-TomoImageStitcher was built for stitching 3D sub-volumes.
-The core is a sub-pixel registration engine.
-It runs on the GPU.
-The use cases below share the same need.
-A single scan is too small.
-A single scan is too low resolution.
-Many scans tile the full region.
-TomoImageStitcher joins them.
-
-### Synchrotron X-ray tomography and microtomography
-
-Modern synchrotrons produce 3D volumes at sub-micron resolution.
-A single field of view rarely covers a full sample.
-The motor stage moves the sample in small steps.
-Each step records a sub-volume.
-Sub-volumes overlap by a small amount.
-TomoImageStitcher registers each overlap.
-It builds the full 3D image from the tiles.
-
-TomoImageStitcher was developed at the DanMAX beamline.
-DanMAX is at the MAX IV Laboratory in Sweden.
-The pipeline runs on the beamline compute nodes.
-It handles translation and rotation acquisitions.
-Mask-aware blending avoids background bleed.
-The output is a single seamless volume.
-The pipeline works with both transmission and fluorescence data.
-
-### Battery research
-
-Li-ion batteries need non-destructive 3D imaging.
-Researchers study electrodes, separators, and current collectors.
-Synchrotron microtomography gives the resolution needed.
-Multiple sub-volumes tile the full cell.
-TomoImageStitcher reconstructs the full cell.
-It supports coin, pouch, and cylindrical formats.
-The output is ready for segmentation and analysis.
-Internal short circuits and dendrite growth can be studied.
-
-### Materials science and metallurgy
-
-Engineered materials have microstructure at the micron scale.
-A single scan may not capture a representative volume.
-Stitcher tiles sub-volumes for a larger region.
-This gives statistically meaningful data.
-It is useful for composites, alloys, and porous media.
-The pipeline works for fibers and laminates.
-Additive manufacturing parts can be inspected.
-The output feeds into digital twins and FEM models.
-
-### Semiconductor and electronics inspection
-
-Modern chips contain hybrid bonds and through-silicon vias.
-These features sit at the sub-micron scale.
-Nano-CT imaging captures the internal structure.
-Multiple scans tile the area of interest.
-TomoImageStitcher combines them into one 3D model.
-The output supports failure analysis.
-It also supports process control.
-Bond integrity and TSV alignment can be verified.
-
-### Geology, petrophysics, and geo-energy
-
-Rock cores contain pores, fractures, and inclusions.
-Synchrotron tomography reveals the internal structure.
-Large cores need many overlapping scans.
-Stitcher combines them into a single volume.
-The output helps with reservoir characterisation.
-It supports CO₂ storage research.
-It also supports oil and gas extraction studies.
-Paleontology and soil science benefit too.
-
-### Life science and cleared-tissue microscopy
-
-The pipeline generalises to other 3D imaging modalities.
-Light-sheet microscopy produces terabyte-sized volumes.
-Many tiles are acquired across a cleared sample.
-TomoImageStitcher assembles them into one 3D image.
-This is useful for whole-organ imaging.
-It also works for cleared tissue and expanded samples.
-Mask-aware blending handles low-signal regions.
-The output feeds into neuron tracing and cell counting.
-
-### In vivo skin and dermatology
-
-Reflectance confocal microscopy produces 3D stacks.
-Multiphoton microscopy adds molecular contrast.
-A single stack rarely covers a clinical lesion.
-TomoImageStitcher combines adjacent stacks.
-Sub-pixel registration matters for diagnosis.
-The pipeline supports motion-tolerant reconstruction.
-It enables histology-like views of larger areas.
-Melanoma, vitiligo, and other conditions can be studied.
-
-### Optical coherence tomography (OCT)
-
-OCT produces high-speed 3D volumes of tissue.
-The lateral field of view is limited by the optics.
-Multiple volumes can be stitched to image larger areas.
-The same ZNCC plus Lucas–Kanade engine is used.
-This works for retinal and dermal OCT.
-It also works for coronary and endoscopic OCT.
-The output is a panoramic 3D view.
-
-### Industrial quality control and non-destructive testing
-
-Manufactured parts may have internal defects.
-TomoImageStitcher works for non-destructive testing.
-The pipeline runs on laboratory nano-CT systems.
-It supports offline and online workflows.
-The output is suitable for metrology.
-It also supports defect reporting.
-Aerospace, automotive, and additive parts can be inspected.
-
-### Cultural heritage and palaeontology
-
-Museum objects and fossils are often fragile.
-They cannot be cut or sectioned.
-Synchrotron tomography reveals their internal structure.
-Stitcher joins many sub-volumes.
-The output is a digital twin.
-It supports conservation and study.
-Paintings, mummies, and fossils can be imaged.
+- Stitching **3D X-ray tomography reconstructions** from a multi-tile
+  translation scan.
+- Stitching **raw projection volumes** (radiographs) before reconstruction.
+- Stitching **3D microscopy datasets** (light-sheet, confocal) where individual
+  tiles are too large to fit into memory.
+- **Multi-scan** stitching where you have several scans with overlapping
+  lateral extent.
+- Stitching on a **rotation stage** (helical or tomographic) — see
+  `notebooks/03_stitching_with_rotation.ipynb`.
 
 ---
 
-## How it works
+## Install
 
-The pipeline runs in six stages.
-Each stage is a Python call on the `Stitcher` object.
-Each stage can be inspected on its own.
-Each stage can be re-run on its own.
-The data flows forward through the pipeline.
-The full per-stage walk-through is in the next section.
-
-```
-                     ┌────────────────────┐
-    list of .h5  ──▶ │  1. Organise       │  classify into z-layers,
-    files + motor     │     sub-volumes    │  compute global pad, find
-    coordinates       └─────────┬──────────┘  intersections
-                                 │
-                                 ▼
-                     ┌────────────────────┐
-                     │  2. Registration   │  ZNCC pixel search + IC-GN
-                     │     (per pair)     │  Lucas–Kanade refinement
-                     └─────────┬──────────┘
-                                 │
-                                 ▼
-                     ┌────────────────────┐
-                     │  3. Accumulate     │  build displacement graph,
-                     │     displacements  │  BFS chain, prune by NCC
-                     └─────────┬──────────┘
-                                 │
-                                 ▼
-                     ┌────────────────────┐
-                     │  4. Equalisation   │  joint histogram match in
-                     │     (intensities)  │  every overlap region
-                     └─────────┬──────────┘
-                                 │
-                                 ▼
-                     ┌────────────────────┐
-                     │  5. Blending       │  distance-map blending,
-                     │     (final canvas) │  optional GPU affine path
-                     └─────────┬──────────┘
-                                 │
-                                 ▼
-                     ┌────────────────────┐
-                     │  6. Save & inspect │  per-layer .h5 + pipeline
-                     │     the result     │  metadata for re-runs
-                     └────────────────────┘
-```
-
-A short summary of each stage follows.
-The full per-stage walk-through is in the next section.
-
-### 1. Organise sub-volumes
-Read the `.h5` files and the motor coordinates.
-Classify the sub-volumes into z-layers.
-Compute the global padding box.
-Find the intersection between every neighbour pair.
-Each intersection is the input to registration.
-
-### 2. Registration
-For each neighbour pair, run ZNCC pixel search.
-ZNCC is a normalised cross-correlation in Fourier space.
-The search runs coarse-to-fine across multiple scales.
-A Lucas–Kanade (IC-GN) optimiser refines the result.
-The warp can be translation, rigid, or affine.
-The output is a per-pair 3D shift plus an NCC score.
-
-### 3. Accumulate displacements
-Chain the per-pair shifts into global shifts.
-A BFS from a seed sub-volume walks the overlap graph.
-Low-NCC pairs are pruned.
-Affine operators are composed where requested.
-Every sub-volume ends up with one global warp.
-
-### 4. Equalisation
-Match intensities across the sub-volumes.
-A linear map is fit on every overlap.
-The map comes from a joint histogram.
-Equalisation runs in parallel with displacement accumulation.
-It removes drift between adjacent scans.
-
-### 5. Blending
-Combine the sub-volumes onto the global canvas.
-A distance map weights every voxel.
-Mask-aware blending avoids background bleed.
-The GPU affine path is 10× to 100× faster than CPU.
-The output is one seamless 3D volume.
-
-### 6. Save and inspect
-Write the final volume to disk.
-One `.h5` file per z-layer.
-The file holds the stitched data and pipeline metadata.
-You can re-run blending from the metadata.
-You can inspect intermediate results for debugging.
-
-See [`docs/architecture.md`](docs/architecture.md) for the data structures
-used between stages.
-
----
-
-## Pipeline stages in detail
-
-Each stage below is a Python call.
-Each stage is independent and can be inspected.
-The full reference lives in [`docs/api.md`](docs/api.md).
-
-### 1. Organise sub-volumes
-
-The pipeline starts with a list of `.h5` files.
-Each file holds one 3D sub-volume.
-Each file also has motor coordinates.
-The motor positions are in millimetres.
-The pipeline reads the volumes into memory.
-It reads only the slices it needs.
-
-The pipeline classifies sub-volumes into z-layers.
-Sub-volumes at the same height belong to the same layer.
-Layers are processed one at a time.
-This avoids wasted work on non-overlapping regions.
-It also matches how beamline scans are acquired.
-
-The pipeline computes the global padding.
-It finds the bounding box of all sub-volumes.
-It finds the intersections between neighbours.
-Each intersection is a small overlapping 3D block.
-These intersections are the units of registration.
-
-### 2. Registration
-
-Registration finds the displacement between two sub-volumes.
-It runs once per neighbour pair.
-Each call uses the ZNCC pixel search first.
-ZNCC stands for Zero-mean Normalized Cross-Correlation.
-ZNCC is robust to intensity offsets.
-ZNCC is also robust to global scaling.
-The search is performed in Fourier space on the GPU.
-
-ZNCC runs at multiple scales.
-It starts at the coarsest scale.
-It steps down to the finest scale.
-Each step refines the result of the previous step.
-This is called a coarse-to-fine search.
-The coarse stage handles large displacements.
-The fine stage handles small displacements.
-Sub-pixel accuracy is the final result.
-
-The Lucas–Kanade step refines the result further.
-The Lucas–Kanade variant used is IC-GN.
-IC-GN stands for Inverse-Compositional Gauss–Newton.
-The Hessian is computed once on the template.
-The template is warped at every iteration.
-Each iteration updates the warp parameters.
-The loop runs until convergence.
-
-The warp can be a translation.
-The warp can also be an affine.
-An affine has 12 parameters.
-A rigid transform has 6 parameters.
-The `keep_rigid_only` flag extracts the rigid part.
-The rigid part is computed by polar decomposition.
-Affine and rigid warps both work on the GPU.
-
-Mask-aware correlation is a key feature.
-A circular mask can be applied before correlating.
-The mask excludes background pixels.
-This avoids spurious correlations on empty regions.
-The mask can be eroded with a structuring element.
-Erosion removes pixels close to the object border.
-
-Each registration call returns:
-* a 3D displacement `(dx, dy, dz)` in voxels
-* an optional 4×4 affine operator
-* a final Normalized Cross-Correlation value
-* a count of valid correlation samples
-
-The NCC value is a quality metric.
-It is between -1 and 1.
-1 means perfect agreement.
-0 means no agreement.
--1 means inverted contrast.
-The pipeline can drop low-NCC pairs.
-The threshold is set by `exclude_NCC`.
-
-### 3. Accumulate displacements
-
-Every neighbour pair has a displacement.
-The pipeline needs global displacements per sub-volume.
-A breadth-first search builds a graph.
-One sub-volume is the seed.
-Each connected sub-volume gets a global shift.
-The shifts are accumulated along the path.
-
-A weighted average can be used.
-Weights come from the NCC values.
-Better registrations contribute more.
-A switch `weighted_avg=False` uses the best NCC instead.
-
-Affine operators can also be chained.
-A 4×4 matrix is composed at each step.
-The composition is on the GPU.
-This gives a full 6-DoF pose per sub-volume.
-The pose can be used for affine stitching.
-
-Bad correlations are pruned.
-Pyramid sub-layers can be discarded.
-The `exclude_NCC` threshold filters low-quality pairs.
-The remaining displacements are trusted.
-
-### 4. Equalisation
-
-Adjacent scans often have different intensities.
-The X-ray flux can change between scans.
-The detector dark current can drift.
-The sample can absorb differently in different regions.
-This creates visible seams in the overlap.
-
-Equalisation removes these seams.
-It runs in the overlap region of every neighbour pair.
-It builds a joint histogram of the two intensities.
-It fits a linear map between the two scales.
-It applies the map to one side of the overlap.
-The result is a smooth intensity transition.
-
-Equalisation is optional.
-It is enabled with `use_equalize=True`.
-It can also reuse a previous fit.
-`use_existing_equalize=True` skips the fit step.
-This is useful for time-lapse datasets.
-It is also useful for re-running a failed run.
-
-The equalised data feeds into blending.
-Equalisation is one of two steps.
-Blending is the other.
-Equalisation and blending work together.
-Equalisation removes the intensity offset.
-Blending removes the spatial seam.
-
-### 5. Blending
-
-Blending combines the sub-volumes into one volume.
-Each sub-volume has a final global shift.
-The shifts come from the accumulation stage.
-The pipeline writes the sub-volumes into one big canvas.
-The canvas is the size of the global padding box.
-The sub-volumes sit inside this canvas.
-
-A distance map is built for each sub-volume.
-The map is large near the centre of the sub-volume.
-The map is small near the borders.
-Pixels far from the border get a high weight.
-Pixels close to the border get a low weight.
-The weight controls how much each pixel contributes.
-
-The final value at each voxel is a weighted sum.
-Weights come from the distance maps of all contributors.
-The result is a smooth transition between sub-volumes.
-No visible seams remain.
-The transition width is controlled by `alpha`.
-Larger `alpha` gives sharper transitions.
-Smaller `alpha` gives smoother transitions.
-
-The distance function is configurable.
-A radial function gives a circular falloff.
-A squared function gives a Chebyshev falloff.
-The `prop_x_y` parameter controls direction.
-`(0, 0)` means no direction preference.
-`(1, 0)` propagates along the x-axis.
-`(0, 1)` propagates along the y-axis.
-`(1, 1)` uses both axes equally.
-
-Blending is mask-aware.
-Background pixels (value 0) never bleed in.
-The mask is resampled with the same interpolator.
-A separate mask distance map is used.
-The output honours the original object silhouette.
-
-The pipeline supports two blending paths.
-The translation path is fast and memory-cheap.
-It uses SimpleITK for warping.
-It does not use the GPU for the warp.
-It works well for small overlaps.
-
-The affine path handles rotation and shear.
-It uses a chunk-by-chunk GPU affine warp.
-Each chunk is a slab in the z-direction.
-Chunk size is controlled by `chunk_size_series`.
-The number of parallel chunks is `chunk_size_parallel`.
-This is where the GPU shines.
-A typical run is 10× to 100× faster than CPU.
-The output is one `.h5` per layer.
-
-### 6. Save and inspect
-
-The pipeline writes intermediate results.
-You can inspect them after each stage.
-`check_padding` shows a 2D sanity view.
-`check_intersection` shows the overlap region.
-`save_reg=True` writes the registered slices.
-These help you debug bad correlations.
-
-The final output is one `.h5` per layer.
-The path is `<saving_path>/Stitched_layers/Layer_<i>.h5`.
-The file holds the stitched volume.
-The file also holds the pipeline metadata.
-The metadata includes all shifts and operators.
-You can re-run blending from the metadata alone.
-
-See [`docs/architecture.md`](docs/architecture.md) for the full description of
-the data structures used between steps.
-
----
-
-## Installation
-
-### Requirements
-
-* Python **3.9+**
-* An **NVIDIA GPU** with CUDA 11+ (CuPy 13+)
-* 16 GB+ of GPU memory recommended for large overlaps
-
-### 1. Clone the repository
+TomoImageStitcher is on PyPI. A CUDA-capable GPU with the matching CuPy wheel
+is required for the GPU stages; everything else is plain Python.
 
 ```bash
-git clone https://github.com/indrajeettambe/TomoImageStitcher.git
-cd TomoImageStitcher
+# 1. (Recommended) a clean environment
+python -m venv .venv && source .venv/bin/activate
+
+# 2. Install with the notebook extras
+pip install -U pip
+pip install "tomo-image-stitcher[notebook,danmax]"
+
+# 3. Install CuPy matching your CUDA version (CUDA 12.x shown)
+pip install cupy-cuda12x
 ```
-
-### 2. (Optional) create a clean environment
-
-```bash
-conda create -n tomo-image-stitcher python=3.10
-conda activate tomo-image-stitcher
-```
-
-### 3. Install the package
-
-```bash
-pip install -e .
-```
-
-This installs both the Python package `tomo_image_stitcher` and the optional
-beamline utilities (`tomo_image_stitcher.danmax`).
-
-### 4. Install CuPy matching your CUDA version
-
-`pip install cupy-cuda12x` is the most common choice — pick the wheel that
-matches your CUDA toolkit, see the [CuPy installation guide](https://docs.cupy.dev/en/stable/install.html).
-
-Verify the install:
-
-```python
-import tomo_image_stitcher, cupy as cp
-print(cp.cuda.runtime.getDeviceCount())  # should be > 0
-```
-
----
-
-## Install without cloning
-
-You do not need to clone the repo to use TomoImageStitcher.
-Pick the option that matches your environment.
-
-### Option 1: Install from PyPI (recommended for users)
-
-```bash
-pip install tomo-image-stitcher
-```
-
-This pulls the latest release from PyPI.
-It installs the `tomo_image_stitcher` Python package.
-It also installs the `tomo_image_stitcher.danmax` beamline helpers.
-No `git` is needed.
-No manual download is needed.
-
-### Option 2: Install directly from GitHub (no clone)
-
-If the package is not on PyPI yet, or you want the latest commit on `main`:
-
-```bash
-pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git
-```
-
-`git` must be installed on the machine.
-pip runs `git clone` internally; you do not run it.
-You can pin to a tag, a branch, or a commit:
-
-```bash
-# a specific tag
-pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git@v0.2.0
-# a specific branch
-pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git@main
-# a specific commit (reproducible)
-pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git@<commit-sha>
-```
-
-You can pull the optional extras the same way:
-
-```bash
-pip install "tomo-image-stitcher[notebook,danmax] @ git+https://github.com/indrajeettambe/TomoImageStitcher.git"
-```
-
-### Option 3: Install from a ZIP archive (no git at all)
 
 If you cannot install `git`, or you are behind a proxy that blocks it:
 
@@ -603,140 +80,101 @@ If you cannot install `git`, or you are behind a proxy that blocks it:
 pip install https://github.com/indrajeettambe/TomoImageStitcher/archive/main.zip
 ```
 
-pip downloads the source tarball directly.
-It runs the build and install in one step.
-This works on any system with Python and pip.
+For full instructions (drivers, conda env, troubleshooting) see
+[`docs/installation.md`](docs/installation.md).
 
 ---
 
 ## Quick start
 
-The example below assumes you have two overlapping `.h5` volumes and the
-motor coordinates of their centres. The example with rotation is in
-`notebooks/03_stitching_with_rotation.ipynb`.
+A minimal end-to-end example on synthetic data. The full version with
+explanations and intermediate visualisations is in
+[`notebooks/02_full_pipeline.ipynb`](notebooks/02_full_pipeline.ipynb).
 
 ```python
 import numpy as np
 from tomo_image_stitcher import Stitcher
 
-# 1) Where are the volumes?
-file_path_list = [
-    "/data/experiment/scan-0001_recon.h5",
-    "/data/experiment/scan-0002_recon.h5",
-]
+# 1. List of .h5 files and their motor positions in millimetres
+file_paths    = ["scan_001.h5", "scan_002.h5", "scan_003.h5"]
+motor_coords  = np.array([[ 0.0,  0.0,  0.0],
+                          [ 0.8,  0.0,  0.0],
+                          [ 1.6,  0.0,  0.0]])
+mm_per_voxel  = 0.0022                       # 2.2 µm voxels
 
-# 2) Motor positions in mm (one row per file)
-motor_positions = np.array([
-    [ 0.0,  0.0, 0.0],
-    [ 0.5,  0.0, 0.0],
-])
+# 2. Initialise the stitcher
+st = Stitcher(file_paths, motor_coords, mm_per_voxel,
+              x_y_z_correspondance=(-1, 3, 2))
 
-# 3) Spatial calibration (mm / voxel)
-mm_per_voxel = 0.00065
-
-# 4) Map motor axes → image axes (1=x, 2=y, 3=z, sign is allowed)
-x_y_z_correspondance = (1, 2, 3)
-
-# 5) Build the stitcher
-st = Stitcher(
-    file_path_list=file_path_list,
-    physical_coordinates=motor_positions,
-    mm_per_voxel=mm_per_voxel,
-    x_y_z_correspondance=x_y_z_correspondance,
-    saving_path="/data/experiment/stitching",
-)
-
-# 6) Run the pipeline
-st.get_layers_in_z(tolerance_mm=2)     # classify by z
-st.get_padding()                      # compute global pad
-st.get_intersections()                # find overlap regions
-st.compute_shift_in_layers(           # register every pair
-    start_slice=st.img_depth // 2 - 2,
-    end_slice=st.img_depth // 2 + 2,
-    mask=True, mask_radius=500,
-    downscale=2, downscale_stages=2,
-    apply_affine_warp=True, keep_rigid_only=True,
-)
-st.get_displacement_pyramid(starting_coord=(0, 0, 0))
-st.accumulate_displacement(exclude_NCC=50, weighted_avg=False, affine_operator=True)
+# 3. Run the six stages
+st.get_layers_in_z(tolerance_mm=4)           # (1) Organise
+st.get_padding()
+st.get_intersections(check=True)
+st.compute_shift_in_layers(downscale=4, downscale_stages=4,   # (2) Registration
+                           downscale_LC=True, mask=True, mask_radius=300)
+st.get_displacement_pyramid(check=False)
+st.accumulate_displacement(exclude_NCC=50)   # (3) Accumulate
 st.compose_final_displacements()
-st.push_stitch_parameters()
-st.stitch_layers(chunk_size_series=40, chunk_size_parallel=5, n_cores=8)
+st.stitch_volumes_blend_equalize(...)        # (4) + (5) Equalise + Blend
+st.stitch_layers(path_save="output/")        # (6) Save
+
+# 4. Read the stitched volume
+import h5py
+with h5py.File("output/Stitched_layers/Layer_0.h5", "r") as f:
+    volume = f["stitched_data/stitched_image"][:]
 ```
-
-The final stitched volume is written to
-`<saving_path>/Stitched_layers/Layer_<i>.h5`.
-
-For a full walk-through, open `notebooks/01_quickstart.ipynb`.
 
 ---
 
 ## Documentation
 
-* [`docs/installation.md`](docs/installation.md) — detailed installation
-  instructions including GPU setup.
-* [`docs/quickstart.md`](docs/quickstart.md) — copy-paste recipes.
-* [`docs/architecture.md`](docs/architecture.md) — design notes & data flow.
-* [`docs/api.md`](docs/api.md) — auto-generated reference of public classes.
-* [`docs/troubleshooting.md`](docs/troubleshooting.md) — common errors.
+| Resource | Description |
+|----------|-------------|
+| [`notebooks/02_full_pipeline.ipynb`](notebooks/02_full_pipeline.ipynb) | **Detailed step-by-step walkthrough** of the full pipeline on synthetic data. Start here. |
+| [`notebooks/01_quickstart.ipynb`](notebooks/01_quickstart.ipynb) | Minimal 5-line end-to-end example. |
+| [`notebooks/03_stitching_with_rotation.ipynb`](notebooks/03_stitching_with_rotation.ipynb) | Original DanMAX rotation-stage example (update paths before running). |
+| [`docs/architecture.md`](docs/architecture.md) | Data structures used between pipeline stages. |
+| [`docs/api.md`](docs/api.md) | Public classes, methods, and parameters. |
+| [`docs/quickstart.md`](docs/quickstart.md) | More copy-paste recipes. |
+| [`docs/troubleshooting.md`](docs/troubleshooting.md) | Common errors and how to recover. |
+
+The mathematical details of the registration (ZNCC, IC-GN Lucas–Kanade, mask
+weighting) and blending (distance-map weighting) are described in
+**[PUBLICATION]**.
 
 ---
 
 ## Project layout
 
 ```
-github-repo/
-├── README.md
-├── LICENSE
-├── requirements.txt
-├── setup.py
-├── pyproject.toml
-├── .gitignore
-├── src/
-│   └── tomo_image_stitcher/
-│       ├── __init__.py
-│       ├── stitcher.py        # main Stitcher class
-│       ├── registration.py    # RegistrationKIT (ZNCC + IC-GN Lucas–Kanade)
-│       ├── transform.py       # chunk-wise affine transform on GPU
-│       └── danmax.py          # DanMAX beamline utilities (optional)
-├── notebooks/
-│   ├── 01_quickstart.ipynb
-│   ├── 02_full_pipeline.ipynb
-│   └── 03_stitching_with_rotation.ipynb
-├── examples/
-│   ├── example_2d_projection.py
-│   └── example_with_rotation.py
-├── tests/
-│   ├── test_stitcher.py
-│   ├── test_transform.py
-│   └── test_utilities.py
-├── docs/
-│   ├── installation.md
-│   ├── quickstart.md
-│   ├── architecture.md
-│   ├── api.md
-│   └── troubleshooting.md
-└── .github/
-    └── workflows/
-        └── tests.yml
+TomoImageStitcher/
+├── src/tomo_image_stitcher/    Package source (Stitcher, RegistrationKIT, …)
+├── notebooks/                  Jupyter tutorials (start with 02_full_pipeline)
+├── examples/                   Standalone Python scripts
+├── tests/                      pytest test-suite
+├── docs/                       Architecture, API, troubleshooting
+├── pyproject.toml              Build & dependency metadata
+├── LICENSE                     MIT
+└── CITATION.cff                Software citation
 ```
 
 ---
 
 ## Citation
 
-A formal citation for TomoImageStitcher is not yet available — the
-associated publication is in preparation. Citation details (BibTeX entry)
-will be added here once the paper is accepted.
-
-If you use this software in the meantime, please acknowledge the GitHub
-repository and the authors listed below.
+If you use TomoImageStitcher in your research, please cite it using the
+metadata in [`CITATION.cff`](CITATION.cff). A publication describing the
+algorithm is in preparation and will be linked here when available
+([PUBLICATION]).
 
 ---
 
+## License
+
+MIT — see [`LICENSE`](LICENSE).
+
 ## Contributors
 
-* **Endri Lacaj**
-* **Indrajeet Tambe**
-
-Contributions are welcome — please open an issue or pull request.
+TomoImageStitcher was originally developed at the **DanMAX** beamline
+(MAX IV Laboratory, Sweden). See the git log for the full list of
+contributors.

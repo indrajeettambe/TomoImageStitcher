@@ -113,7 +113,7 @@ the data structures used between steps.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-org>/stitcher-v0-2.git
+git clone https://github.com/indrajeettambe/stitcher-v0-2.git
 cd stitcher-v0-2
 ```
 
@@ -272,7 +272,7 @@ repository" button.
   author = {Lacaj, Endri and Tambe, Indrajeet},
   title  = {Stitcher v0.2: GPU-accelerated 3D volumetric stitching},
   year   = {2025},
-  url    = {https://github.com/<your-org>/stitcher-v0-2}
+  url    = {https://github.com/indrajeettambe/stitcher-v0-2}
 }
 ```
 

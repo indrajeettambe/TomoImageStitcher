@@ -82,3 +82,10 @@ Thumbs.db
 
 # Local configs
 *.local
+
+# GitHub / GitLab / etc. personal access tokens
+PAT*.txt
+pat*.txt
+*.pat
+*.token
+token.txt

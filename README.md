@@ -113,8 +113,8 @@ the data structures used between steps.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/indrajeettambe/stitcher-v0-2.git
-cd stitcher-v0-2
+git clone https://github.com/indrajeettambe/volume-stitcher.git
+cd volume-stitcher
 ```
 
 ### 2. (Optional) create a clean environment
@@ -151,7 +151,7 @@ print(cp.cuda.runtime.getDeviceCount())  # should be > 0
 
 The example below assumes you have two overlapping `.h5` volumes and the
 motor coordinates of their centres. The example with rotation is in
-`notebooks/02_stitching_with_rotation.ipynb`.
+`notebooks/03_stitching_with_rotation.ipynb`.
 
 ```python
 import numpy as np
@@ -236,18 +236,18 @@ github-repo/
 │       ├── stitcher.py        # main Stitcher class
 │       ├── registration.py    # RegistrationKIT (ZNCC + IC-GN Lucas–Kanade)
 │       ├── transform.py       # chunk-wise affine transform on GPU
-│       ├── utilities.py       # H5MaxIV, masks, distance functions
 │       └── danmax.py          # DanMAX beamline utilities (optional)
 ├── notebooks/
 │   ├── 01_quickstart.ipynb
-│   ├── 02_stitching_with_rotation.ipynb
-│   └── 03_full_pipeline.ipynb
+│   ├── 02_full_pipeline.ipynb
+│   └── 03_stitching_with_rotation.ipynb
 ├── examples/
 │   ├── example_2d_projection.py
 │   └── example_with_rotation.py
 ├── tests/
 │   ├── test_stitcher.py
-│   └── test_registration.py
+│   ├── test_transform.py
+│   └── test_utilities.py
 ├── docs/
 │   ├── installation.md
 │   ├── quickstart.md
@@ -272,7 +272,7 @@ repository" button.
   author = {Lacaj, Endri and Tambe, Indrajeet},
   title  = {Stitcher v0.2: GPU-accelerated 3D volumetric stitching},
   year   = {2025},
-  url    = {https://github.com/indrajeettambe/stitcher-v0-2}
+  url    = {https://github.com/indrajeettambe/volume-stitcher}
 }
 ```
 
@@ -280,8 +280,8 @@ repository" button.
 
 ## Contributors
 
-* **Endri Lacaj** — original author, registration engine, stitching pipeline
-* **Indrajeet Tambe** — DanMAX beamline integration, pipeline, notebooks
+* **Endri Lacaj**
+* **Indrajeet Tambe**
 
 Contributions are welcome — please open an issue or pull request.
 

@@ -1961,7 +1961,7 @@ class Utilities:
                             f = h5py.File(file_path, 'r')  # Open file (user must close it)
                             return f['entry']['instrument']['zyla']['data']  # Returns a reference to the dataset
                         except:
-                            sys.exit("Please open the volume_stitching_3d_FM.py file and modify the entry to the h5 data!")
+                            sys.exit("Unrecognised H5 layout. See `docs/troubleshooting.md` for the list of supported paths.")
 
         @staticmethod
         def get_shape(file_path): 

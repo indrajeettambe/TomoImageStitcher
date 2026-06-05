@@ -80,7 +80,7 @@ The result lands in `out_run/Stitched_layers/Layer_0.h5`.
 When the sub-volumes were acquired on a rotation stage, pass the rotation
 centre (or simply rely on the motor positions) and Stitcher will
 automatically detect the rotation. See
-`notebooks/02_stitching_with_rotation.ipynb` for the full workflow.
+`notebooks/03_stitching_with_rotation.ipynb` for the full workflow.
 
 ```python
 st = Stitcher(

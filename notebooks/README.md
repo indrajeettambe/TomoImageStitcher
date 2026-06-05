@@ -6,7 +6,7 @@ Stitcher v0.2 workflows.
 | Notebook                              | Description |
 |---------------------------------------|-------------|
 | `01_quickstart.ipynb`                 | Minimal end-to-end example on **synthetic** data. |
-| `02_full_pipeline_batch_1_EL.ipynb`   | The original DanMAX "extended layer" workflow.    |
+| `02_full_pipeline.ipynb`              | The original DanMAX "extended layer" workflow.    |
 | `03_stitching_with_rotation.ipynb`    | Stitching on a rotation-stage dataset.            |
 
 ## Running the notebooks

@@ -64,9 +64,9 @@ dev = [
 all = ["stitcher[danmax,notebook,dev]"]
 
 [project.urls]
-Homepage = "https://github.com/indrajeettambe/stitcher-v0-2"
-Issues = "https://github.com/indrajeettambe/stitcher-v0-2/issues"
-Documentation = "https://github.com/indrajeettambe/stitcher-v0-2/tree/main/docs"
+Homepage = "https://github.com/indrajeettambe/volume-stitcher"
+Issues = "https://github.com/indrajeettambe/volume-stitcher/issues"
+Documentation = "https://github.com/indrajeettambe/volume-stitcher/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -53,8 +53,8 @@ the version you should match when installing CuPy.
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/indrajeettambe/stitcher-v0-2.git
-cd stitcher-v0-2
+git clone https://github.com/indrajeettambe/volume-stitcher.git
+cd volume-stitcher
 pip install -e .
 ```
 

@@ -1,7 +1,7 @@
 # Notebooks
 
 This directory contains Jupyter notebooks demonstrating the main
-Stitcher v0.2 workflows.
+TomoImageStitcher workflows.
 
 | Notebook                              | Description |
 |---------------------------------------|-------------|
@@ -29,7 +29,7 @@ Stitcher v0.2 workflows.
 ## Notes on `02_*` and `03_*`
 
 These are the **original** beamline notebooks, lightly cleaned up. They
-import the `stitcher` package instead of the old `volume_stitching_3d_v0_2`
+import the `tomo_image_stitcher` package instead of the old `volume_stitching_3d_v0_2`
 module, but they still reference DanMAX paths such as
 `/data/visitors/danmax/20240533/2024101108/...`. Update those paths to
 point to your own data before running.

@@ -35,7 +35,7 @@ jobs:
       - name: Run CPU tests
         run: |
           python -m pip install pytest pytest-cov
-          pytest tests/test_utilities.py -v --cov=stitcher --cov-report=term-missing
+          pytest tests/test_utilities.py -v --cov=tomo_image_stitcher --cov-report=term-missing
 
   gpu:
     name: GPU tests
@@ -54,4 +54,4 @@ jobs:
           python -m pip install -e .[dev]
       - name: Run GPU tests
         run: |
-          pytest tests/ -v -m gpu --cov=stitcher --cov-report=term-missing
+          pytest tests/ -v -m gpu --cov=tomo_image_stitcher --cov-report=term-missing

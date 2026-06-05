@@ -10,7 +10,7 @@ import h5py
 import numpy as np
 import pytest
 
-from stitcher import Utilities
+from tomo_image_stitcher import Utilities
 
 
 def _fake_h5(path, shape=(8, 32, 32), value=100):

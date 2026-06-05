@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run the full Stitcher v0.2 test suite.
+# Run the full TomoImageStitcher test suite.
 # CPU-only tests run anywhere; the GPU tests are skipped automatically when
 # no CUDA device is visible to CuPy.
 set -euo pipefail

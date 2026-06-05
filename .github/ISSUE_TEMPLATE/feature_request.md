@@ -1,5 +1,5 @@
 name: Feature request
-about: Suggest a new feature for Stitcher v0.2
+about: Suggest a new feature for TomoImageStitcher
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''
@@ -11,7 +11,7 @@ A clear and concise description of what the problem is.
 
 ## Describe the solution you'd like
 
-What you would like Stitcher to do.
+What you would like TomoImageStitcher to do.
 
 ## Alternatives considered
 

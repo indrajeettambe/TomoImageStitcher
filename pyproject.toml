@@ -5,7 +5,7 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "stitcher"
+name = "tomo-image-stitcher"
 version = "0.2.0"
 description = "GPU-accelerated 3D volumetric stitcher for tomographic and microscopy volumes."
 readme = "README.md"
@@ -61,19 +61,19 @@ dev = [
     "flake8>=6.0",
     "isort>=5.12",
 ]
-all = ["stitcher[danmax,notebook,dev]"]
+all = ["tomo-image-stitcher[danmax,notebook,dev]"]
 
 [project.urls]
-Homepage = "https://github.com/indrajeettambe/volume-stitcher"
-Issues = "https://github.com/indrajeettambe/volume-stitcher/issues"
-Documentation = "https://github.com/indrajeettambe/volume-stitcher/tree/main/docs"
+Homepage = "https://github.com/indrajeettambe/TomoImageStitcher"
+Issues = "https://github.com/indrajeettambe/TomoImageStitcher/issues"
+Documentation = "https://github.com/indrajeettambe/TomoImageStitcher/tree/main/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["stitcher*"]
+include = ["tomo_image_stitcher*"]
 
 [tool.setuptools.package-data]
-stitcher = ["py.typed"]
+tomo_image_stitcher = ["py.typed"]
 
 [tool.black]
 line-length = 100

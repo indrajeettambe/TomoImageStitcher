@@ -10,7 +10,7 @@ import pytest
 
 cupy = pytest.importorskip("cupy")
 
-from stitcher import affine_transform_large_data
+from tomo_image_stitcher import affine_transform_large_data
 
 
 def test_identity_affine_preserves_values():

@@ -1,5 +1,5 @@
 """
-Stitcher v0.2 — main Stitcher class.
+TomoImageStitcher — main Stitcher class.
 
 This module exposes the high-level :class:`Stitcher` class that drives the
 full stitching pipeline, plus the small :class:`Utilities` helper namespace

@@ -26,7 +26,7 @@ The `Utilities.H5MaxIV.reader` tries a list of common layouts:
 
 * `exchange/data` — ForMAX / HZB
 * `image` — generic
-* `stitched_data/stitched_image` — outputs of a previous Stitcher run
+* `stitched_data/stitched_image` — outputs of a previous TomoImageStitcher run
 * `entry/instrument/zyla/data` — a NeXus layout
 
 If your data uses a different layout, either:
@@ -65,7 +65,7 @@ Try:
 * `prop_x_y=(0, 0)` (Chebyshev) for "square" distance propagation, useful
   when the slices are arranged on a regular grid.
 
-## Stitcher hangs at `stitch_volumes_blend_equalize_parallel`
+## TomoImageStitcher hangs at `stitch_volumes_blend_equalize_parallel`
 
 `multiprocessing.Pool` is not compatible with CuPy on some setups — the
 code uses a `ThreadPool` instead, but you may still hit the global

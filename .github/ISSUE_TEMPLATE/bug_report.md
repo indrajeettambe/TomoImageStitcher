@@ -1,5 +1,5 @@
 name: Bug report
-about: Report a bug in Stitcher v0.2
+about: Report a bug in TomoImageStitcher
 title: "[BUG] "
 labels: bug
 assignees: ''
@@ -28,7 +28,7 @@ What actually happened — paste the full traceback if any.
 
 ## Environment
 
-* Stitcher version: (`python -c "import stitcher; print(stitcher.__version__)"`)
+* TomoImageStitcher version: (`python -c "import tomo_image_stitcher; print(tomo_image_stitcher.__version__)"`)
 * Python version:
 * OS:
 * CUDA version (`nvidia-smi`):

@@ -1,4 +1,4 @@
-# Stitcher v0.2
+# TomoImageStitcher
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -6,7 +6,7 @@
 [![CuPy](https://img.shields.io/badge/GPU-CuPy-76B900.svg)](https://cupy.dev/)
 
 A GPU-accelerated, sub-pixel accurate 3D volumetric stitcher for tomographic and
-large-volume microscopy datasets. Stitcher v0.2 registers overlapping 3D
+large-volume microscopy datasets. TomoImageStitcher registers overlapping 3D
 sub-volumes acquired on a translation (and optionally rotation) stage and
 produces a single seamless volume with mask-aware blending and optional
 intensity equalization.
@@ -18,7 +18,7 @@ intensity equalization.
 
 ## Table of contents
 
-- [Why Stitcher?](#why-stitcher)
+- [Why TomoImageStitcher?](#why-tomoimagestitcher)
 - [Key features](#key-features)
 - [How it works](#how-it-works)
 - [Installation](#installation)
@@ -31,10 +31,10 @@ intensity equalization.
 
 ---
 
-## Why Stitcher?
+## Why TomoImageStitcher?
 
 Most off-the-shelf stitching tools (ImageJ/Fiji Grid/Collection stitching,
-BigStitcher, etc.) are designed for 2D tiles. Stitcher v0.2 is built
+BigStitcher, etc.) are designed for 2D tiles. TomoImageStitcher is built
 specifically for **3D sub-volumes** with the following goals in mind:
 
 - **Sub-pixel registration** via a ZNCC pixel search followed by an
@@ -113,15 +113,15 @@ the data structures used between steps.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/indrajeettambe/volume-stitcher.git
-cd volume-stitcher
+git clone https://github.com/indrajeettambe/TomoImageStitcher.git
+cd TomoImageStitcher
 ```
 
 ### 2. (Optional) create a clean environment
 
 ```bash
-conda create -n stitcher python=3.10
-conda activate stitcher
+conda create -n tomo-image-stitcher python=3.10
+conda activate tomo-image-stitcher
 ```
 
 ### 3. Install the package
@@ -130,8 +130,8 @@ conda activate stitcher
 pip install -e .
 ```
 
-This installs both the Python package `stitcher` and the optional
-beamline utilities (`stitcher.danmax`).
+This installs both the Python package `tomo_image_stitcher` and the optional
+beamline utilities (`tomo_image_stitcher.danmax`).
 
 ### 4. Install CuPy matching your CUDA version
 
@@ -141,7 +141,7 @@ matches your CUDA toolkit, see the [CuPy installation guide](https://docs.cupy.d
 Verify the install:
 
 ```python
-import stitcher, cupy as cp
+import tomo_image_stitcher, cupy as cp
 print(cp.cuda.runtime.getDeviceCount())  # should be > 0
 ```
 
@@ -155,7 +155,7 @@ motor coordinates of their centres. The example with rotation is in
 
 ```python
 import numpy as np
-from stitcher import Stitcher
+from tomo_image_stitcher import Stitcher
 
 # 1) Where are the volumes?
 file_path_list = [
@@ -231,7 +231,7 @@ github-repo/
 ├── pyproject.toml
 ├── .gitignore
 ├── src/
-│   └── stitcher/
+│   └── tomo_image_stitcher/
 │       ├── __init__.py
 │       ├── stitcher.py        # main Stitcher class
 │       ├── registration.py    # RegistrationKIT (ZNCC + IC-GN Lucas–Kanade)
@@ -263,18 +263,13 @@ github-repo/
 
 ## Citation
 
-If you use Stitcher v0.2 in academic work, please cite it. A `CITATION.cff`
-file is provided in the root of the repository for GitHub's "Cite this
-repository" button.
+A formal citation for TomoImageStitcher is **not yet available** — the
+associated publication is in preparation. Citation details (BibTeX entry
+and `CITATION.cff`) will be added here once the paper is accepted.
 
-```bibtex
-@software{stitcher_v0_2,
-  author = {Lacaj, Endri and Tambe, Indrajeet},
-  title  = {Stitcher v0.2: GPU-accelerated 3D volumetric stitching},
-  year   = {2025},
-  url    = {https://github.com/indrajeettambe/volume-stitcher}
-}
-```
+If you use this software in the meantime, please acknowledge the
+[GitHub repository](https://github.com/indrajeettambe/TomoImageStitcher)
+and the authors listed below.
 
 ---
 
@@ -284,11 +279,3 @@ repository" button.
 * **Indrajeet Tambe**
 
 Contributions are welcome — please open an issue or pull request.
-
----
-
-## License
-
-This project is released under the **MIT License** — see [`LICENSE`](LICENSE)
-for details. Use it, modify it, ship it in your beamline, just keep the
-copyright notice.

@@ -284,7 +284,7 @@ if __name__ == "__main__":
             (img.shape[2] / 2, img.shape[1] / 2, img.shape[0] / 2)
         )
 
-        out_dir = tempfile.mkdtemp(prefix="stitcher_test_")
+        out_dir = tempfile.mkdtemp(prefix="tomo_image_stitcher_test_")
         transform.chunk_by_chunk_transform(path=out_dir, file_name="identity")
         print(f"Identity transform output written to: {out_dir}")
 

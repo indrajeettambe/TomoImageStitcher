@@ -15,7 +15,7 @@ import h5py
 import numpy as np
 import cupy as cp
 
-from stitcher import Stitcher
+from tomo_image_stitcher import Stitcher
 
 
 def write_synthetic_volume(

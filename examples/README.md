@@ -1,7 +1,7 @@
 # Examples
 
 This directory contains runnable Python scripts that demonstrate the main
-features of Stitcher v0.2 on **synthetic** data. The point is to verify the
+features of TomoImageStitcher on **synthetic** data. The point is to verify the
 install and show the API surface — the original beamline data is too large
 to ship here.
 
@@ -14,7 +14,7 @@ to ship here.
 
 ```bash
 # 1) Activate your environment
-conda activate stitcher
+conda activate tomo-image-stitcher
 
 # 2) Run
 python examples/example_2d_projection.py

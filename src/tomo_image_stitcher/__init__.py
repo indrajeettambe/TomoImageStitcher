@@ -1,5 +1,5 @@
 """
-Stitcher v0.2 — GPU-accelerated 3D volumetric stitching.
+TomoImageStitcher — GPU-accelerated 3D volumetric stitching.
 
 A package for stitching 3D sub-volumes (tomography reconstructions,
 projection volumes, etc.) using a ZNCC pixel search followed by an

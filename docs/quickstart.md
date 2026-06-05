@@ -1,6 +1,6 @@
 # Quickstart
 
-This page is a copy-paste tour of the most common Stitcher v0.2 workflows.
+This page is a copy-paste tour of the most common TomoImageStitcher workflows.
 Every snippet below uses synthetic data so you can verify the install without
 needing real `.h5` files.
 
@@ -24,7 +24,7 @@ small overlap. This is what the `01_quickstart` notebook walks through.
 ```python
 import numpy as np
 import cupy as cp
-from stitcher import Stitcher
+from tomo_image_stitcher import Stitcher
 
 # Generate two fake volumes with a known translation
 shape = (16, 256, 256)
@@ -78,7 +78,7 @@ The result lands in `out_run/Stitched_layers/Layer_0.h5`.
 ## 2. Translation + rotation stage
 
 When the sub-volumes were acquired on a rotation stage, pass the rotation
-centre (or simply rely on the motor positions) and Stitcher will
+centre (or simply rely on the motor positions) and TomoImageStitcher will
 automatically detect the rotation. See
 `notebooks/03_stitching_with_rotation.ipynb` for the full workflow.
 

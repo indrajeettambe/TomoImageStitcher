@@ -1,4 +1,4 @@
-"""End-to-end smoke test of the Stitcher pipeline on synthetic data.
+"""End-to-end smoke test of the TomoImageStitcher pipeline on synthetic data.
 
 This is intentionally minimal: it does not check the quality of the
 registration, only that the full pipeline runs without errors. The test is
@@ -13,7 +13,7 @@ import pytest
 
 cupy = pytest.importorskip("cupy")
 
-from stitcher import Stitcher
+from tomo_image_stitcher import Stitcher
 
 
 def _write_fake_h5(path, shape=(8, 32, 32), value=100):

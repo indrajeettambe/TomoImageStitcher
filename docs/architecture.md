@@ -1,8 +1,8 @@
 # Architecture
 
-This document describes the data structures and processing stages of Stitcher
-v0.2. It is the reference you should read when contributing or when the
-default pipeline does not quite fit your data.
+This document describes the data structures and processing stages of
+TomoImageStitcher. It is the reference you should read when contributing or
+when the default pipeline does not quite fit your data.
 
 ## High-level pipeline
 

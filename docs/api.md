@@ -3,10 +3,10 @@
 The full reference is auto-generated from the docstrings. The most useful
 entry points are listed below.
 
-## `stitcher.Stitcher`
+## `tomo_image_stitcher.Stitcher`
 
 ```python
-class stitcher.Stitcher(
+class tomo_image_stitcher.Stitcher(
     file_path_list,
     physical_coordinates,
     mm_per_voxel,
@@ -49,17 +49,17 @@ Drives the entire stitching pipeline. The order of operations is:
 | `affine_warp`                      | `None`                                 | Whether to use affine (vs shift) for stitching. |
 | `prop_x_y`                         | `(0, 0)`                               | Direction for the blending distance field. |
 
-## `stitcher.RegistrationKIT`
+## `tomo_image_stitcher.RegistrationKIT`
 
 Static-method class. Useful methods:
 
 * `RegistrationKIT.correlate_NCC(search, template, downscale=1, downscale_stages=1, use_spline=False, use_mask_template=False, use_mask_search=False, use_minimun_count=False, mask_threshold=(-1E-10, 1E-10), minimum_count=1E6, apply_gaussian_img_x_y_z=(0,0,0), apply_gaussian_NCC_x_y_z=(0,0,0))`
 * `RegistrationKIT.lucas_kanade_3D_inv_mask(template_img, moving_img, derivatives="gaussian", sigma_z_y_x=(1, 1, 1), margins_xyz=(20, 20, 20), max_iter=20, convergence_criteria=0.001, mask=False, erodeMask=False, erosionElement=np.ones((1, 1, 1)), initial_guess=None, interp_order=1, regulate=False, slice_extract=None, save=False, affine_warp=False, affine_guess=True, rigid_warp=False, xy_reg=False)`
 
-## `stitcher.affine_transform_large_data`
+## `tomo_image_stitcher.affine_transform_large_data`
 
 ```python
-class stitcher.affine_transform_large_data(img_h5_pointer, chunk_size=1, add_value_for_mask=False)
+class tomo_image_stitcher.affine_transform_large_data(img_h5_pointer, chunk_size=1, add_value_for_mask=False)
 ```
 
 * `get_chunks_position(start_slice, end_slice)`
@@ -70,7 +70,7 @@ class stitcher.affine_transform_large_data(img_h5_pointer, chunk_size=1, add_val
 * `transform_chunk(chunk_index, use_mask=False)`
 * `chunk_by_chunk_transform(path=None, file_name=None, overwrite=False)`
 
-## `stitcher.Utilities`
+## `tomo_image_stitcher.Utilities`
 
 Static helpers (no instance needed):
 
@@ -87,7 +87,7 @@ Static helpers (no instance needed):
 * `Utilities.convert(img, maxValue=None, minImg=None, maxImg=None, data_type=np.uint16)`
 * `Utilities.plot_slice(image, title="Slice")`
 
-## `stitcher.danmax` (optional)
+## `tomo_image_stitcher.danmax` (optional)
 
 Beamline-specific helpers, only useful on the DanMAX Jupyter environment:
 

@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving Stitcher v0.2!  Contributions of all
+Thanks for your interest in improving TomoImageStitcher!  Contributions of all
 sizes are welcome — bug reports, documentation fixes, new examples, new
 features and refactorings.
 

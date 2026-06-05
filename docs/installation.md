@@ -1,6 +1,6 @@
 # Installation
 
-This page covers everything you need to install Stitcher v0.2, including the
+This page covers everything you need to install TomoImageStitcher, including the
 GPU drivers and CuPy wheel that match your CUDA toolkit.
 
 ## 1. System requirements
@@ -20,13 +20,13 @@ GPU drivers and CuPy wheel that match your CUDA toolkit.
 
 ## 2. Create a clean Python environment
 
-We strongly recommend isolating Stitcher in its own environment to avoid
+We strongly recommend isolating TomoImageStitcher in its own environment to avoid
 clashes with the rest of your Python installation.
 
 ```bash
 # Option A — conda
-conda create -n stitcher python=3.10
-conda activate stitcher
+conda create -n tomo-image-stitcher python=3.10
+conda activate tomo-image-stitcher
 
 # Option B — venv
 python3 -m venv .venv
@@ -48,17 +48,17 @@ nvcc --version
 The CUDA version reported by `nvidia-smi` is the **runtime** version — it is
 the version you should match when installing CuPy.
 
-## 4. Install the Stitcher package
+## 4. Install the TomoImageStitcher package
 
 Clone the repository and install in editable mode:
 
 ```bash
-git clone https://github.com/indrajeettambe/volume-stitcher.git
-cd volume-stitcher
+git clone https://github.com/indrajeettambe/TomoImageStitcher.git
+cd TomoImageStitcher
 pip install -e .
 ```
 
-This installs the core `stitcher` package.
+This installs the core `tomo_image_stitcher` package.
 
 If you plan to use the DanMAX beamline utilities or the example notebooks,
 install the optional extras:
@@ -84,8 +84,8 @@ for the full table of supported combinations.
 ## 6. Verify the installation
 
 ```python
->>> import stitcher
->>> stitcher.__version__
+>>> import tomo_image_stitcher
+>>> tomo_image_stitcher.__version__
 '0.2.0'
 >>> import cupy as cp
 >>> cp.cuda.runtime.getDeviceCount()  # should be >= 1

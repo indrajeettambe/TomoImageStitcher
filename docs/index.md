@@ -1,4 +1,4 @@
-# Stitcher v0.2 — Documentation
+# TomoImageStitcher — Documentation
 
 GPU-accelerated, sub-pixel accurate 3D volumetric stitcher for tomographic
 and large-volume microscopy datasets. Originally developed at the **DanMAX**
@@ -16,14 +16,14 @@ beamline (MAX IV Laboratory, Sweden).
 
 ## Quick links
 
-- [GitHub repository](https://github.com/indrajeettambe/volume-stitcher)
+- [GitHub repository](https://github.com/indrajeettambe/TomoImageStitcher)
 - [Project layout](../README.md#project-layout)
 - [Citation](../README.md#citation)
 
-## Why Stitcher?
+## Why TomoImageStitcher?
 
 Most off-the-shelf stitching tools (ImageJ/Fiji Grid/Collection stitching,
-BigStitcher, etc.) are designed for 2D tiles. Stitcher v0.2 is built
+BigStitcher, etc.) are designed for 2D tiles. TomoImageStitcher is built
 specifically for **3D sub-volumes** with the following goals in mind:
 
 - Sub-pixel registration via a ZNCC pixel search followed by an

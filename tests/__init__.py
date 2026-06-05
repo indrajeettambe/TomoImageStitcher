@@ -1,1 +1,1 @@
-"""Test suite for the Stitcher v0.2 package."""
+"""Test suite for the TomoImageStitcher package."""

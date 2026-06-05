@@ -2,7 +2,7 @@
 Registration kit — ZNCC pixel search and IC-GN Lucas-Kanade refinement.
 
 This module provides :class:`RegistrationKIT`, a static-method-only class that
-exposes the two registration engines used by the Stitcher pipeline:
+exposes the two registration engines used by the TomoImageStitcher pipeline:
 
 * :meth:`RegistrationKIT.correlate_NCC` — a multi-stage downscaled
   zero-normalised cross-correlation pixel search on the GPU.

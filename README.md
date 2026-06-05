@@ -22,6 +22,7 @@ intensity equalization.
 - [Key features](#key-features)
 - [Where you can use it](#where-you-can-use-it)
 - [How it works](#how-it-works)
+- [Pipeline stages in detail](#pipeline-stages-in-detail)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Documentation](#documentation)
@@ -224,6 +225,218 @@ The pipeline has four main stages:
                     │     the volume     │  optional equalization
                     └────────────────────┘
 ```
+
+See [`docs/architecture.md`](docs/architecture.md) for the full description of
+the data structures used between steps.
+
+---
+
+## Pipeline stages in detail
+
+Each stage below is a Python call.
+Each stage is independent and can be inspected.
+The full reference lives in [`docs/api.md`](docs/api.md).
+
+### 1. Organise sub-volumes
+
+The pipeline starts with a list of `.h5` files.
+Each file holds one 3D sub-volume.
+Each file also has motor coordinates.
+The motor positions are in millimetres.
+The pipeline reads the volumes into memory.
+It reads only the slices it needs.
+
+The pipeline classifies sub-volumes into z-layers.
+Sub-volumes at the same height belong to the same layer.
+Layers are processed one at a time.
+This avoids wasted work on non-overlapping regions.
+It also matches how beamline scans are acquired.
+
+The pipeline computes the global padding.
+It finds the bounding box of all sub-volumes.
+It finds the intersections between neighbours.
+Each intersection is a small overlapping 3D block.
+These intersections are the units of registration.
+
+### 2. Registration
+
+Registration finds the displacement between two sub-volumes.
+It runs once per neighbour pair.
+Each call uses the ZNCC pixel search first.
+ZNCC stands for Zero-mean Normalized Cross-Correlation.
+ZNCC is robust to intensity offsets.
+ZNCC is also robust to global scaling.
+The search is performed in Fourier space on the GPU.
+
+ZNCC runs at multiple scales.
+It starts at the coarsest scale.
+It steps down to the finest scale.
+Each step refines the result of the previous step.
+This is called a coarse-to-fine search.
+The coarse stage handles large displacements.
+The fine stage handles small displacements.
+Sub-pixel accuracy is the final result.
+
+The Lucas–Kanade step refines the result further.
+The Lucas–Kanade variant used is IC-GN.
+IC-GN stands for Inverse-Compositional Gauss–Newton.
+The Hessian is computed once on the template.
+The template is warped at every iteration.
+Each iteration updates the warp parameters.
+The loop runs until convergence.
+
+The warp can be a translation.
+The warp can also be an affine.
+An affine has 12 parameters.
+A rigid transform has 6 parameters.
+The `keep_rigid_only` flag extracts the rigid part.
+The rigid part is computed by polar decomposition.
+Affine and rigid warps both work on the GPU.
+
+Mask-aware correlation is a key feature.
+A circular mask can be applied before correlating.
+The mask excludes background pixels.
+This avoids spurious correlations on empty regions.
+The mask can be eroded with a structuring element.
+Erosion removes pixels close to the object border.
+
+Each registration call returns:
+* a 3D displacement `(dx, dy, dz)` in voxels
+* an optional 4×4 affine operator
+* a final Normalized Cross-Correlation value
+* a count of valid correlation samples
+
+The NCC value is a quality metric.
+It is between -1 and 1.
+1 means perfect agreement.
+0 means no agreement.
+-1 means inverted contrast.
+The pipeline can drop low-NCC pairs.
+The threshold is set by `exclude_NCC`.
+
+### 3. Accumulate displacements
+
+Every neighbour pair has a displacement.
+The pipeline needs global displacements per sub-volume.
+A breadth-first search builds a graph.
+One sub-volume is the seed.
+Each connected sub-volume gets a global shift.
+The shifts are accumulated along the path.
+
+A weighted average can be used.
+Weights come from the NCC values.
+Better registrations contribute more.
+A switch `weighted_avg=False` uses the best NCC instead.
+
+Affine operators can also be chained.
+A 4×4 matrix is composed at each step.
+The composition is on the GPU.
+This gives a full 6-DoF pose per sub-volume.
+The pose can be used for affine stitching.
+
+Bad correlations are pruned.
+Pyramid sub-layers can be discarded.
+The `exclude_NCC` threshold filters low-quality pairs.
+The remaining displacements are trusted.
+
+### 4. Equalisation
+
+Adjacent scans often have different intensities.
+The X-ray flux can change between scans.
+The detector dark current can drift.
+The sample can absorb differently in different regions.
+This creates visible seams in the overlap.
+
+Equalisation removes these seams.
+It runs in the overlap region of every neighbour pair.
+It builds a joint histogram of the two intensities.
+It fits a linear map between the two scales.
+It applies the map to one side of the overlap.
+The result is a smooth intensity transition.
+
+Equalisation is optional.
+It is enabled with `use_equalize=True`.
+It can also reuse a previous fit.
+`use_existing_equalize=True` skips the fit step.
+This is useful for time-lapse datasets.
+It is also useful for re-running a failed run.
+
+The equalised data feeds into blending.
+Equalisation is one of two steps.
+Blending is the other.
+Equalisation and blending work together.
+Equalisation removes the intensity offset.
+Blending removes the spatial seam.
+
+### 5. Blending
+
+Blending combines the sub-volumes into one volume.
+Each sub-volume has a final global shift.
+The shifts come from the accumulation stage.
+The pipeline writes the sub-volumes into one big canvas.
+The canvas is the size of the global padding box.
+The sub-volumes sit inside this canvas.
+
+A distance map is built for each sub-volume.
+The map is large near the centre of the sub-volume.
+The map is small near the borders.
+Pixels far from the border get a high weight.
+Pixels close to the border get a low weight.
+The weight controls how much each pixel contributes.
+
+The final value at each voxel is a weighted sum.
+Weights come from the distance maps of all contributors.
+The result is a smooth transition between sub-volumes.
+No visible seams remain.
+The transition width is controlled by `alpha`.
+Larger `alpha` gives sharper transitions.
+Smaller `alpha` gives smoother transitions.
+
+The distance function is configurable.
+A radial function gives a circular falloff.
+A squared function gives a Chebyshev falloff.
+The `prop_x_y` parameter controls direction.
+`(0, 0)` means no direction preference.
+`(1, 0)` propagates along the x-axis.
+`(0, 1)` propagates along the y-axis.
+`(1, 1)` uses both axes equally.
+
+Blending is mask-aware.
+Background pixels (value 0) never bleed in.
+The mask is resampled with the same interpolator.
+A separate mask distance map is used.
+The output honours the original object silhouette.
+
+The pipeline supports two blending paths.
+The translation path is fast and memory-cheap.
+It uses SimpleITK for warping.
+It does not use the GPU for the warp.
+It works well for small overlaps.
+
+The affine path handles rotation and shear.
+It uses a chunk-by-chunk GPU affine warp.
+Each chunk is a slab in the z-direction.
+Chunk size is controlled by `chunk_size_series`.
+The number of parallel chunks is `chunk_size_parallel`.
+This is where the GPU shines.
+A typical run is 10× to 100× faster than CPU.
+The output is one `.h5` per layer.
+
+### 6. Save and inspect
+
+The pipeline writes intermediate results.
+You can inspect them after each stage.
+`check_padding` shows a 2D sanity view.
+`check_intersection` shows the overlap region.
+`save_reg=True` writes the registered slices.
+These help you debug bad correlations.
+
+The final output is one `.h5` per layer.
+The path is `<saving_path>/Stitched_layers/Layer_<i>.h5`.
+The file holds the stitched volume.
+The file also holds the pipeline metadata.
+The metadata includes all shifts and operators.
+You can re-run blending from the metadata alone.
 
 See [`docs/architecture.md`](docs/architecture.md) for the full description of
 the data structures used between steps.

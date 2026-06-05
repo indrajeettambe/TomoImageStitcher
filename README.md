@@ -263,13 +263,12 @@ github-repo/
 
 ## Citation
 
-A formal citation for TomoImageStitcher is **not yet available** — the
-associated publication is in preparation. Citation details (BibTeX entry
-and `CITATION.cff`) will be added here once the paper is accepted.
+A formal citation for TomoImageStitcher is not yet available — the
+associated publication is in preparation. Citation details (BibTeX entry)
+will be added here once the paper is accepted.
 
-If you use this software in the meantime, please acknowledge the
-[GitHub repository](https://github.com/indrajeettambe/TomoImageStitcher)
-and the authors listed below.
+If you use this software in the meantime, please acknowledge the GitHub
+repository and the authors listed below.
 
 ---
 

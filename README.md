@@ -200,35 +200,98 @@ Paintings, mummies, and fossils can be imaged.
 
 ## How it works
 
-The pipeline has four main stages:
+The pipeline runs in six stages.
+Each stage is a Python call on the `Stitcher` object.
+Each stage can be inspected on its own.
+Each stage can be re-run on its own.
+The data flows forward through the pipeline.
+The full per-stage walk-through is in the next section.
 
 ```
-                    ┌────────────────────┐
-   list of .h5  ──▶ │  1. Organize       │  classify into z-layers,
-   files + motor     │     sub-volumes    │  compute global pad, find
-   coordinates       └─────────┬──────────┘  intersections
-                                │
-                                ▼
-                    ┌────────────────────┐
-                    │  2. Correlate      │  ZNCC pixel search + LK
-                    │     intersections  │  for every neighbour pair
-                    └─────────┬──────────┘
-                                │
-                                ▼
-                    ┌────────────────────┐
-                    │  3. Accumulate     │  build displacement pyramid,
-                    │     displacements  │  accumulate, prune by NCC
-                    └─────────┬──────────┘
-                                │
-                                ▼
-                    ┌────────────────────┐
-                    │  4. Stitch & blend │  distance-map blending,
-                    │     the volume     │  optional equalization
-                    └────────────────────┘
+                     ┌────────────────────┐
+    list of .h5  ──▶ │  1. Organise       │  classify into z-layers,
+    files + motor     │     sub-volumes    │  compute global pad, find
+    coordinates       └─────────┬──────────┘  intersections
+                                 │
+                                 ▼
+                     ┌────────────────────┐
+                     │  2. Registration   │  ZNCC pixel search + IC-GN
+                     │     (per pair)     │  Lucas–Kanade refinement
+                     └─────────┬──────────┘
+                                 │
+                                 ▼
+                     ┌────────────────────┐
+                     │  3. Accumulate     │  build displacement graph,
+                     │     displacements  │  BFS chain, prune by NCC
+                     └─────────┬──────────┘
+                                 │
+                                 ▼
+                     ┌────────────────────┐
+                     │  4. Equalisation   │  joint histogram match in
+                     │     (intensities)  │  every overlap region
+                     └─────────┬──────────┘
+                                 │
+                                 ▼
+                     ┌────────────────────┐
+                     │  5. Blending       │  distance-map blending,
+                     │     (final canvas) │  optional GPU affine path
+                     └─────────┬──────────┘
+                                 │
+                                 ▼
+                     ┌────────────────────┐
+                     │  6. Save & inspect │  per-layer .h5 + pipeline
+                     │     the result     │  metadata for re-runs
+                     └────────────────────┘
 ```
 
-See [`docs/architecture.md`](docs/architecture.md) for the full description of
-the data structures used between steps.
+A short summary of each stage follows.
+The full per-stage walk-through is in the next section.
+
+### 1. Organise sub-volumes
+Read the `.h5` files and the motor coordinates.
+Classify the sub-volumes into z-layers.
+Compute the global padding box.
+Find the intersection between every neighbour pair.
+Each intersection is the input to registration.
+
+### 2. Registration
+For each neighbour pair, run ZNCC pixel search.
+ZNCC is a normalised cross-correlation in Fourier space.
+The search runs coarse-to-fine across multiple scales.
+A Lucas–Kanade (IC-GN) optimiser refines the result.
+The warp can be translation, rigid, or affine.
+The output is a per-pair 3D shift plus an NCC score.
+
+### 3. Accumulate displacements
+Chain the per-pair shifts into global shifts.
+A BFS from a seed sub-volume walks the overlap graph.
+Low-NCC pairs are pruned.
+Affine operators are composed where requested.
+Every sub-volume ends up with one global warp.
+
+### 4. Equalisation
+Match intensities across the sub-volumes.
+A linear map is fit on every overlap.
+The map comes from a joint histogram.
+Equalisation runs in parallel with displacement accumulation.
+It removes drift between adjacent scans.
+
+### 5. Blending
+Combine the sub-volumes onto the global canvas.
+A distance map weights every voxel.
+Mask-aware blending avoids background bleed.
+The GPU affine path is 10× to 100× faster than CPU.
+The output is one seamless 3D volume.
+
+### 6. Save and inspect
+Write the final volume to disk.
+One `.h5` file per z-layer.
+The file holds the stitched data and pipeline metadata.
+You can re-run blending from the metadata.
+You can inspect intermediate results for debugging.
+
+See [`docs/architecture.md`](docs/architecture.md) for the data structures
+used between stages.
 
 ---
 

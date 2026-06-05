@@ -1,5 +1,9 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+message: >-
+  A formal citation is not yet available — the associated publication is
+  in preparation. For now, please cite the GitHub repository
+  (https://github.com/indrajeettambe/TomoImageStitcher). A BibTeX entry
+  and updated authors list will be added here once the paper is accepted.
 type: software
 title: "TomoImageStitcher: GPU-accelerated 3D volumetric stitching"
 version: 0.2.0

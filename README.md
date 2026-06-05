@@ -23,6 +23,7 @@ intensity equalization.
 - [Where you can use it](#where-you-can-use-it)
 - [How it works](#how-it-works)
 - [Pipeline stages in detail](#pipeline-stages-in-detail)
+- [Install without cloning](#install-without-cloning)
 - [Installation](#installation)
 - [Quick start](#quick-start)
 - [Documentation](#documentation)
@@ -485,6 +486,79 @@ Verify the install:
 import tomo_image_stitcher, cupy as cp
 print(cp.cuda.runtime.getDeviceCount())  # should be > 0
 ```
+
+---
+
+## Install without cloning
+
+You do not need to clone the repo to use TomoImageStitcher.
+Pick the option that matches your environment.
+
+### Option 1: Install from PyPI (recommended for users)
+
+```bash
+pip install tomo-image-stitcher
+```
+
+This pulls the latest release from PyPI.
+It installs the `tomo_image_stitcher` Python package.
+It also installs the `tomo_image_stitcher.danmax` beamline helpers.
+No `git` is needed.
+No manual download is needed.
+
+### Option 2: Install directly from GitHub (no clone)
+
+If the package is not on PyPI yet, or you want the latest commit on `main`:
+
+```bash
+pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git
+```
+
+`git` must be installed on the machine.
+pip runs `git clone` internally; you do not run it.
+You can pin to a tag, a branch, or a commit:
+
+```bash
+# a specific tag
+pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git@v0.2.0
+# a specific branch
+pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git@main
+# a specific commit (reproducible)
+pip install git+https://github.com/indrajeettambe/TomoImageStitcher.git@<commit-sha>
+```
+
+You can pull the optional extras the same way:
+
+```bash
+pip install "tomo-image-stitcher[notebook,danmax] @ git+https://github.com/indrajeettambe/TomoImageStitcher.git"
+```
+
+### Option 3: Install from a ZIP archive (no git at all)
+
+If you cannot install `git`, or you are behind a proxy that blocks it:
+
+```bash
+pip install https://github.com/indrajeettambe/TomoImageStitcher/archive/main.zip
+```
+
+pip downloads the source tarball directly.
+It runs the build and install in one step.
+This works on any system with Python and pip.
+
+### Option 4: Use the Docker image (handles CUDA + deps)
+
+For beamline or HPC deployments where the CUDA stack is fixed:
+
+```bash
+docker pull ghcr.io/indrajeettambe/tomo-image-stitcher:latest
+docker run --gpus all -it ghcr.io/indrajeettambe/tomo-image-stitcher:latest
+```
+
+The image is based on `nvidia/cuda:12.x-runtime`.
+It includes Python, CuPy, SimpleITK, and the package.
+It needs the NVIDIA Container Toolkit on the host.
+Tagged releases (`v0.2.0`, `v0.2`, `latest`) and `main` are published.
+See `docker/` in the repo for the build files.
 
 ---
 

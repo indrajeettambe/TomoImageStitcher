@@ -15,8 +15,13 @@ cupy = pytest.importorskip("cupy")  # noqa: F811  (also re-selected by -m gpu)
 
 
 def _write_fake_h5(path, shape=(8, 32, 32), value=100):
+    # Add Poisson noise on top of a uniform baseline so the registration
+    # step has real structure to lock onto; a flat field would yield an
+    # all-NaN NCC and trip cupy's "All-NaN slice" warning.
+    rng = np.random.default_rng(seed=hash(path) & 0xFFFF)
+    data = rng.poisson(value, size=shape).astype(np.uint16)
     with h5py.File(path, "w") as fh:
-        fh.create_dataset("image", data=np.full(shape, value, dtype=np.uint16))
+        fh.create_dataset("image", data=data)
 
 
 @pytest.mark.gpu

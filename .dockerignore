@@ -1,0 +1,50 @@
+# Keep the build context small and free of secrets / build artefacts.
+
+# VCS
+.git
+.gitignore
+.gitattributes
+.github
+
+# CI / coverage artefacts
+.coverage
+htmlcov
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Python build artefacts
+build
+dist
+sdist
+*.egg-info
+*.egg
+__pycache__
+*.py[cod]
+*$py.class
+
+# Virtualenvs
+.venv
+venv
+env
+
+# Notebooks and docs (large, not needed in image)
+.ipynb_checkpoints
+docs
+notebooks
+examples
+
+# Editor / OS junk
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# Repo-level metadata files that are not part of the package
+CHANGELOG.md
+CONTRIBUTING.md
+TODO_PyPI_Docker_setup.txt
+
+# Docker itself
+Dockerfile
+.dockerignore

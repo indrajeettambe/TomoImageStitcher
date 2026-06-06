@@ -58,6 +58,12 @@ jobs:
           name: dist
           path: dist/
 
-      - name: Publish to PyPI
+      - name: Publish to TestPyPI
+        if: github.event_name == 'workflow_dispatch' && github.inputs.repository == 'testpypi'
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: github.event_name == 'push' || github.inputs.repository == 'pypi'
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.inputs.repository == 'pypi')
+        uses: pypa/gh-action-pypi-publish@release/v1

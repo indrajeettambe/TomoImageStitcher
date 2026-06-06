@@ -4,13 +4,14 @@ This is intentionally minimal: it does not check the quality of the
 registration, only that the full pipeline runs without errors. The test is
 skipped on machines without a CUDA-capable GPU.
 """
+import pytest
+
 from tomo_image_stitcher import Stitcher
 
 import h5py
 import numpy as np
-import pytest
 
-cupy = pytest.importorskip("cupy")
+cupy = pytest.importorskip("cupy")  # noqa: F811  (also re-selected by -m gpu)
 
 
 def _write_fake_h5(path, shape=(8, 32, 32), value=100):
@@ -18,6 +19,7 @@ def _write_fake_h5(path, shape=(8, 32, 32), value=100):
         fh.create_dataset("image", data=np.full(shape, value, dtype=np.uint16))
 
 
+@pytest.mark.gpu
 def test_full_pipeline_runs(tmp_path):
     left = tmp_path / "left.h5"
     right = tmp_path / "right.h5"

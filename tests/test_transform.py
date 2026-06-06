@@ -2,16 +2,19 @@
 
 These tests are skipped automatically if CuPy cannot find a GPU.
 """
+import pytest
+
 from tomo_image_stitcher import affine_transform_large_data
+
 import tempfile
 
 import h5py
 import numpy as np
-import pytest
 
 cupy = pytest.importorskip("cupy")
 
 
+@pytest.mark.gpu
 def test_identity_affine_preserves_values():
     arr = np.random.randint(0, 65535, size=(4, 16, 16), dtype=np.uint16)
 

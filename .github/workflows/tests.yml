@@ -42,16 +42,33 @@ jobs:
     runs-on: [self-hosted, gpu]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-          cache: pip
+      - name: Locate pre-installed Python
+        # Self-hosted runners must bring their own Python. The conda env at
+        # /home/indrajeettambe/miniconda3 provides Python 3.12 on this box;
+        # override $CONDA_PREFIX in a wrapper if you move it.
+        id: py
+        run: |
+          for cand in /home/indrajeettambe/miniconda3/bin/python3.12 \
+                      /opt/conda/bin/python3.12 \
+                      /usr/local/bin/python3.12 \
+                      /usr/bin/python3.12; do
+            if [ -x "$cand" ]; then
+              echo "python=$cand" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "::error::No Python 3.12 found in standard locations" >&2
+          exit 1
+      - name: Verify CUDA device is visible
+        run: |
+          nvidia-smi
+          test -n "$(nvidia-smi -L)" || (echo "::error::No GPU visible to the runner"; exit 1)
       - name: Install package with GPU support
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install cupy-cuda12x
-          python -m pip install -e .[dev]
+          "${{ steps.py.outputs.python }}" -m pip install --upgrade pip
+          "${{ steps.py.outputs.python }}" -m pip install cupy-cuda12x
+          "${{ steps.py.outputs.python }}" -m pip install -e .[dev]
       - name: Run GPU tests
         run: |
-          pytest tests/ -v -m gpu --cov=tomo_image_stitcher --cov-report=term-missing
+          "${{ steps.py.outputs.python }}" -m pytest tests/ -v -m gpu \
+              --cov=tomo_image_stitcher --cov-report=term-missing

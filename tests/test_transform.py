@@ -2,6 +2,7 @@
 
 These tests are skipped automatically if CuPy cannot find a GPU.
 """
+from tomo_image_stitcher import affine_transform_large_data
 import tempfile
 
 import h5py
@@ -9,8 +10,6 @@ import numpy as np
 import pytest
 
 cupy = pytest.importorskip("cupy")
-
-from tomo_image_stitcher import affine_transform_large_data
 
 
 def test_identity_affine_preserves_values():

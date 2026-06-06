@@ -4,16 +4,13 @@ This is intentionally minimal: it does not check the quality of the
 registration, only that the full pipeline runs without errors. The test is
 skipped on machines without a CUDA-capable GPU.
 """
-import os
-import tempfile
+from tomo_image_stitcher import Stitcher
 
 import h5py
 import numpy as np
 import pytest
 
 cupy = pytest.importorskip("cupy")
-
-from tomo_image_stitcher import Stitcher
 
 
 def _write_fake_h5(path, shape=(8, 32, 32), value=100):

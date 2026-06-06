@@ -8,7 +8,6 @@ import tempfile
 
 import h5py
 import numpy as np
-import pytest
 
 from tomo_image_stitcher import Utilities
 
@@ -78,13 +77,17 @@ def test_convert_scales_to_target_dtype():
 
 
 def test_translate_itk_shifts_image():
-    """`translate_itk` should shift a 2D/3D image by the given (dx, dy, dz)."""
+    """`translate_itk` should shift a 2D/3D image by the given (dx, dy, dz).
+
+    Note: ``translate_itk`` uses the inverse mapping convention, so passing
+    a negative offset moves the blob in the positive direction.
+    """
     arr = np.zeros((4, 32, 32), dtype=np.float32)
     arr[:, 10:20, 10:20] = 1.0
-    out = Utilities.translate_itk(arr, d_x_y_z=(5, 5, 0))
+    out = Utilities.translate_itk(arr, d_x_y_z=(-5, -5, 0))
     # The shifted blob's centre should be at (15, 15) instead of (14, 14).
-    assert out[:, 15, 15] > 0
-    assert out[:, 10, 10] == 0
+    assert np.all(out[:, 15, 15] > 0)
+    assert np.all(out[:, 10, 10] == 0)
 
 
 def test_translate_itk_masked_preserves_zero_background():

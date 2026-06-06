@@ -15,63 +15,41 @@ A handful of optional helpers rely on the beamline's ``lib.*`` packages
 the import failure is caught, so the module loads on any Python environment.
 """
 
+from datetime import datetime
+from cycler import cycler
+from matplotlib.colors import LinearSegmentedColormap
+import matplotlib.pyplot as plt
+import numpy as np
+import json
+import glob
+import h5py
+import os
 version = '3.6.0'
 
-#use_dark_mode = True
-import os
-import h5py
-import glob
-import json
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LinearSegmentedColormap
-from cycler import cycler
-import scipy.optimize as sci_op
-#import scipy.constants as sci_const
-from IPython.utils import io
-from datetime import datetime
 try:
     from ipywidgets import interact
     from pyFAI import geometry
     import pytz
-except:
+except BaseException:
     print('Change to HDF5 server to load all modules')
 
 # Importing DanMAX libraries for specialized functionality
 # Done in try statements to catch different jupyter environments
 try:
-    from lib.misc import *
-except:
+    from lib.misc import *  # noqa: F401,F403  (DanMAX beamline helper)
+except BaseException:
     print('Unable to load lib/misc.py')
 try:
-    import lib.mapping as mapping
-except:
-    print('Unable to load lib/mapping.py')
-try:
-    import lib.texture as texture
-except:
-    print('Unable to load lib/texture.py')
-try:
-    import lib.integration as integration
-except:
-    print('Unable to load lib/integration.py')
-try:
-    import lib.parallel as parallel
-except:
+    from lib import parallel
+except BaseException:
     print('Unable to load lib/parallel.py')
-try:
-    import lib.fitting as fitting
-except:
-    print('Unable to load lib/fitting.py')
-try:
-    import lib.archiver_danmax as archiver
-except:
-    print('Unable to load lib/archiver_danmax.py')
-    
+
+
 def pi(engineer=False):
     if engineer:
         return 3.
     return np.pi
+
 
 def getTimeStamps(ts):
     """Convert an array of absolute utc timestamps to an array of readable string timestamps (yyyy-mm-dd HH:MM:SS.ffffff)"""
@@ -80,92 +58,96 @@ def getTimeStamps(ts):
         ts = np.array([ts])
     # set offset (daylight saving) based on first index
     offsetTZ = timezone.localize(datetime.utcfromtimestamp(ts[0])).utcoffset()
-    ts = np.array([f'{datetime.utcfromtimestamp(t)+offsetTZ}' for t in ts])
+    ts = np.array([f'{datetime.utcfromtimestamp(t) + offsetTZ}' for t in ts])
     return ts
+
 
 def getCurrentProposal(proposal=None, visit=None):
     """Return current proposal number and visit number
     If proposal/visit is provided it will pass it back"""
-    
-    if proposal != None and visit != None:
+
+    if proposal is not None and visit is not None:
         return proposal, visit
 
-    cwd = os.getcwd().replace('gpfs/offline1','data')
+    cwd = os.getcwd().replace('gpfs/offline1', 'data')
     idx = cwd.split('/').index('danmax')
-    proposal_new, visit_new =  cwd.split('/')[idx+1:idx+3]
-    if proposal == None:
+    proposal_new, visit_new = cwd.split('/')[idx + 1:idx + 3]
+    if proposal is None:
         proposal = proposal_new
-    if visit == None:
+    if visit is None:
         visit = visit_new
     return proposal, visit
+
 
 def getCurrentProposalType(proposal_type=None, beamline=None):
     """Return current proposal type and beamline
     If proposal_type/beamline is provided it will pass it back"""
-    
-    if proposal_type != None and beamline != None:
+
+    if proposal_type is not None and beamline is not None:
         return proposal_type, beamline
-    cwd = os.getcwd().replace('gpfs/offline1','data')
+    cwd = os.getcwd().replace('gpfs/offline1', 'data')
     idx = cwd.split('/').index('data')
-    proposal_type, beamline =  cwd.split('/')[idx+1:idx+3]
+    proposal_type, beamline = cwd.split('/')[idx + 1:idx + 3]
     return proposal_type, beamline
 
-def getProposalScans(proposal_type=None, beamline=None,proposal=None, visit=None):
+
+def getProposalScans(proposal_type=None, beamline=None, proposal=None, visit=None):
     """Get scan directory for the current proposal
     """
     proposal_type, beamline = getCurrentProposalType(proposal_type, beamline)
     proposal, visit = getCurrentProposal(proposal, visit)
-    
+
     process_folder = f'/data/{proposal_type}/{beamline}/{proposal}/{visit}/process'
     dictionary_file = f'{process_folder}/sample_dictionary.json'
 
     if not os.path.isfile(dictionary_file):
-        print(f'There is no scan_dictionary, run the dictionary creator first!!!')
+        print('There is no scan_dictionary, run the dictionary creator first!!!')
         return None
 
-    with open(dictionary_file,'r') as df:
+    with open(dictionary_file, 'r') as df:
         return json.load(df)
 
-def saveProposalScans(scan_dictionary,proposal_type=None, beamline=None,proposal=None, visit=None):
+
+def saveProposalScans(scan_dictionary, proposal_type=None, beamline=None, proposal=None, visit=None):
     """save scan directory for the current proposal
     Takes a dictionary and saves it as a json file
     """
 
     proposal_type, beamline = getCurrentProposalType(proposal_type, beamline)
     proposal, visit = getCurrentProposal(proposal, visit)
-    
+
     process_folder = f'/data/{proposal_type}/{beamline}/{proposal}/{visit}/process'
-    
+
     if not os.path.isdir(process_folder):
         os.makedirss(process_folder)
-        os.chmod(process_folder,0o770)
+        os.chmod(process_folder, 0o770)
 
     dictionary_file = f'{process_folder}/sample_dictionary.json'
-    with open(dictionary_file,'w') as df:
+    with open(dictionary_file, 'w') as df:
         json.dump(scan_dictionary, df)
 
-    
-def getLatestScan(scan_type='any',require_integrated=False,proposal=None,visit=None,is_parallel=False,proposal_type='visitors',beamline='danmax'):
+
+def getLatestScan(scan_type='any', require_integrated=False, proposal=None, visit=None, is_parallel=False, proposal_type='visitors', beamline='danmax'):
     """
     Return the path to the latest /raw/*/*.h5 scan for the provided proposal and visit.
     Defaults to the current proposal directory of proposal and visit are not specified.
-    
+
     Use scan_type (str) to specify which scan type to search for, i.e. 'timescan', 'dscan', 'ascan', etc.
-    
+
     Use require_integrated = True to ensure that the returned scan has a valid integrated .h5 file.
     """
-    proposal, visit = getCurrentProposal(proposal,visit)
+    proposal, visit = getCurrentProposal(proposal, visit)
     proposal_type, beamline = getCurrentProposalType(proposal_type, beamline)
     if is_parallel:
-        return parallel.findAllParallel(proposal=None,visit=None)[-1]
-    #print(proposal, visit)
-    files = sorted(glob.glob(f'/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/**/*.h5', recursive=True), key = os.path.getctime, reverse=True)
+        return parallel.findAllParallel(proposal=None, visit=None)[-1]
+    # print(proposal, visit)
+    files = sorted(glob.glob(f'/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/**/*.h5', recursive=True), key=os.path.getctime, reverse=True)
     files = [f for f in files if not ('pilatus.h5' in f or '_falconx.h5' in f or '_orca.h5' in f or '_dxchange.h5' in f)]
     for file in files:
-        if not 'pilatus.h5' in file and not '_falconx.h5' in file:
+        if 'pilatus.h5' not in file and '_falconx.h5' not in file:
             # find a valid raw .h5 file
             try:
-                with h5py.File(file,'r') as f:
+                with h5py.File(file, 'r') as f:
                     if scan_type != 'any':
                         title = f['entry/title/'][()].decode()
                         if scan_type in title:
@@ -174,65 +156,67 @@ def getLatestScan(scan_type='any',require_integrated=False,proposal=None,visit=N
                             raise OSError
                     else:
                         pass
-                # check if a valid integrated .h5 file exists 
+                # check if a valid integrated .h5 file exists
                 try:
-                    afile = file.replace('raw', 'process/azint').split('.')[0]+'_pilatus_integrated.h5'
-                    with h5py.File(afile,'r') as f:
+                    afile = file.replace('raw', 'process/azint').split('.')[0] + '_pilatus_integrated.h5'
+                    with h5py.File(afile, 'r') as f:
                         pass
-                    #scan_id = os.path.basename(file).split('.h5')[0]
-                except OSError as err:
+                    # scan_id = os.path.basename(file).split('.h5')[0]
+                except OSError:
                     if require_integrated:
                         raise OSError
-                    print('Unable to find a valid integrated file for the latest scan')    
+                    print('Unable to find a valid integrated file for the latest scan')
                 if scan_type != 'any':
-                    print(f'Latest valid {scan_type}:\n',file)
+                    print(f'Latest valid {scan_type}:\n', file)
                 else:
-                    print('Latest valid scan:\n',file)
+                    print('Latest valid scan:\n', file)
                 return file
-            except OSError as err:
+            except OSError:
                 pass
     print(f"No scan of type '{scan_type}' found in '/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/'")
     return None
 
+
 def getAzintFname(fname):
     """Return the expected file path for a provided /raw/*/*.h5 file path"""
+    afname = fname.replace('raw', 'process/azint').split('.')[0] + '_pilatus_integrated.h5'
     try:
-        afname = fname.replace('raw', 'process/azint').split('.')[0]+'_pilatus_integrated.h5'
-        with h5py.File(afname,'r') as f:
+        with h5py.File(afname, 'r') as _f:  # noqa: F841 (only used to verify the file opens)
             pass
         return afname
     except OSError as err:
         print(err.strerror)
 
-def getMetaData(fname,custom_keys={},relative=True,proposal=None,visit=None):
+
+def getMetaData(fname, custom_keys={}, relative=True, proposal=None, visit=None):
     """
     Return dictionary of selected meta data. Return {key:None} if key is not available.
-    Use custom_keys to provide a dictionary of custom keys for additional parameters, where 
+    Use custom_keys to provide a dictionary of custom keys for additional parameters, where
     the key will be inherited by the returned dictionary and the value is the full .h5 path.
-    Example: 
+    Example:
         custom_keys = {'hex_x':'entry/instrument/hex_x/value',
                        'hex_y':'entry/instrument/hex_y/value',
                        }
-    
+
     Default keys:
         I0
         time
         temp
         energy
-        
+
     relative: Bool - Toggle wheteher to return data relative to the specific scan (True) or as absolute values (False). Default: True
     """
     if fname.startswith('scan-'):
-        fname = findScan(fname,proposal,visit)
+        fname = findScan(fname, proposal, visit)
 
     if 'master.h5' in fname:
-        fname = fname.replace('raw', 'process/azint').replace('.h5','_meta.h5')
-        
-    data = {'I0':None,
-            'time':None,
-            'temp':None,
-            'energy':None}
-    with h5py.File(fname,'r') as f:
+        fname = fname.replace('raw', 'process/azint').replace('.h5', '_meta.h5')
+
+    data = {'I0': None,
+            'time': None,
+            'temp': None,
+            'energy': None}
+    with h5py.File(fname, 'r') as f:
         try:
             I0 = f['entry/instrument/albaem-xrd_ch2/data'][:]
             if relative:
@@ -262,7 +246,7 @@ def getMetaData(fname,custom_keys={},relative=True,proposal=None,visit=None):
         for key in custom_keys:
             try:
                 # check if value is a scalar
-                if len(f[custom_keys[key]].shape)==0:
+                if len(f[custom_keys[key]].shape) == 0:
                     data[key] = f[custom_keys[key]][()]
                 else:
                     data[key] = f[custom_keys[key]][:]
@@ -271,14 +255,15 @@ def getMetaData(fname,custom_keys={},relative=True,proposal=None,visit=None):
                 print(f'{key} not available')
     return data
 
+
 def getMetaDic(fname):
     """Return dictionary of available meta data, reusing the .h5 dictionary keys."""
     if 'master.h5' in fname:
-        fname = fname.replace('raw', 'process/azint').replace('.h5','_meta.h5')
+        fname = fname.replace('raw', 'process/azint').replace('.h5', '_meta.h5')
     data = {}
-    with h5py.File(fname,'r') as f:
+    with h5py.File(fname, 'r') as f:
         for key in f['/entry/instrument/'].keys():
-             if key != 'pilatus' and key != 'start_positioners':
+            if key != 'pilatus' and key != 'start_positioners':
                 for k in f['/entry/instrument/'][key].keys():
                     data[key] = f['/entry/instrument/'][key][k][:]
     return data
@@ -301,92 +286,93 @@ def appendScans(scans,
             data - dictionary
             meta - dictionary
     """
-    for i,scan in enumerate(scans):
-        fname = findScan(scan,proposal=proposal,visit=visit)
+    for i, scan in enumerate(scans):
+        fname = findScan(scan, proposal=proposal, visit=visit)
         aname = getAzintFname(fname)
         metadic = getMetaDic(fname)
         ts = metadic['pcap_trigts']
-        
-        datadic = getAzintData(aname,xrd_range=xrd_range,azi_range=azi_range,proposal=proposal,visit=visit)
-        
+
+        datadic = getAzintData(aname, xrd_range=xrd_range, azi_range=azi_range, proposal=proposal, visit=visit)
+
         if len(ts) != datadic['I'].shape[0]:
             print(f'Missing metadata in {fname}')
             datadic['I'] = datadic['I'][:len(ts)]
-            if type(datadic['cake']) != type(None):
+            if not isinstance(datadic['cake'], type(None)):
                 datadic['cake'] = datadic['cake'][:len(ts)]
-        if i<1:
+        if i < 1:
             data = datadic.copy()
             meta = metadic.copy()
         else:
-            for key in ['I','cake']:
-                if type(datadic[key]) != type(None):
-                    data[key] = np.append(data[key],datadic[key],axis=0)
-            meta = {key:np.append(meta[key],metadic[key]) for key in metadic}
+            for key in ['I', 'cake']:
+                if not isinstance(datadic[key], type(None)):
+                    data[key] = np.append(data[key], datadic[key], axis=0)
+            meta = {key: np.append(meta[key], metadic[key]) for key in metadic}
     return data, meta
 
 
-def findAllScans(scan_type='any',descending=True,proposal=None,visit=None,proposal_type='visitors',beamline='danmax'):
+def findAllScans(scan_type='any', descending=True, proposal=None, visit=None, proposal_type='visitors', beamline='danmax'):
     """
     Return a sorted list of all scans in the current visit
     Use scan_type (str) to specify which scan type to search for, i.e. 'timescan', 'dscan', 'ascan', etc.
     """
-    proposal, visit = getCurrentProposal(proposal,visit)
+    proposal, visit = getCurrentProposal(proposal, visit)
     proposal_type, beamline = getCurrentProposalType(proposal_type, beamline)
-    files = sorted(glob.glob(f'/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/**/*.h5', recursive=True), key = os.path.basename, reverse=descending)
+    files = sorted(glob.glob(f'/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/**/*.h5', recursive=True), key=os.path.basename, reverse=descending)
     files = [f for f in files if not ('pilatus.h5' in f or '_falconx.h5' in f or '_orca.h5' in f or '_dxchange.h5' in f or '_xspress3-dtc-2d' in f)]
     if scan_type != 'any':
         files = [f for f in files if scan_type in getScanType(f)]
-    if len(files)<1:
-        print(f"No scans of type '{scan_type}' found in '/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/'")    
+    if len(files) < 1:
+        print(f"No scans of type '{scan_type}' found in '/data/{proposal_type}/{beamline}/{proposal}/{visit}/raw/'")
     return files
 
 
-def findScan(scan_id=None,proposal=None,visit=None,is_parallel=False,proposal_type='visitors',beamline='danmax'):
+def findScan(scan_id=None, proposal=None, visit=None, is_parallel=False, proposal_type='visitors', beamline='danmax'):
     """Return the path of a specified scan number. If no scan number is specified, return latest scan"""
     if not is_parallel:
-        if scan_id == None:
+        if scan_id is None:
             return getLatestScan()
-        elif type(scan_id) == int:
+        elif isinstance(scan_id, int):
             scan_id = f'scan-{scan_id:04d}'
-        elif type(scan_id) == str:
-            scan_id = 'scan-'+scan_id.strip().split('scan-')[-1][:4]
+        elif isinstance(scan_id, str):
+            scan_id = 'scan-' + scan_id.strip().split('scan-')[-1][:4]
 
-        for sc in findAllScans(proposal=proposal,visit=visit,proposal_type='visitors',beamline='danmax'):
+        for sc in findAllScans(proposal=proposal, visit=visit, proposal_type='visitors', beamline='danmax'):
             if scan_id in sc:
                 return sc
-        print('Unable to find {} in {}/{}'.format(scan_id,*getCurrentProposal(proposal,visit)))
+        print('Unable to find {} in {}/{}'.format(scan_id, *getCurrentProposal(proposal, visit)))
 
     else:
-        scans = parallel.findAllParallel(proposal=None,visit=None)
+        scans = parallel.findAllParallel(proposal=None, visit=None)
         if scan_id is None:
             index = -1
-        elif type(scan_id) == int:
+        elif isinstance(scan_id, int):
             index = scan_id
-        elif type(scan_id) == str:
+        elif isinstance(scan_id, str):
             if scan_id in scans:
                 return scan_id
-            print('Unable to find {} in {}/{}'.format(scan_id,*getCurrentProposal(proposal,visit)))
+            print('Unable to find {} in {}/{}'.format(scan_id, *getCurrentProposal(proposal, visit)))
         return scans[index]
-    
-    
-def getScanType(fname,proposal=None,visit=None):
+
+
+def getScanType(fname, proposal=None, visit=None):
     """Return the scan type based on the .h5 scan title"""
     if fname.startswith('scan-'):
-        fname = findScan(fname,proposal=proposal,visit=visit)
-    with h5py.File(fname,'r') as f:
+        fname = findScan(fname, proposal=proposal, visit=visit)
+    with h5py.File(fname, 'r') as f:
         try:
             scan_type = f['entry/title/'][()].decode()
             # clean up special characters
-            scan_type = scan_type.replace('(',' ').replace(')',' ').strip("'").replace(',','')
-            #print(scan_type)
+            scan_type = scan_type.replace('(', ' ').replace(')', ' ').strip("'").replace(',', '')
+            # print(scan_type)
             return scan_type
         except KeyError:
             print('No entry title available')
             return 'None'
 
-def getExposureTime(fname,proposal=None,visit=None):
+
+def getExposureTime(fname, proposal=None, visit=None):
     """Return the exposure time in seconds as determined from the scan type"""
-    scan_type = getScanType(fname,proposal=proposal,visit=visit)
+    scan_type = getScanType(fname, proposal=proposal, visit=visit)
     if 'timescan' in scan_type:
         exposure = scan_type.split()[2]
     elif 'ascan' in scan_type:
@@ -397,11 +383,13 @@ def getExposureTime(fname,proposal=None,visit=None):
         exposure = scan_type.split()[9]
     return float(exposure)
 
+
 def getScan_id(fname):
     """Return the scan_id from a full file path"""
     if 'master.h5' in fname:
         return fname.split('raw/')[-1].split('/master')[0]
-    return 'scan-'+fname.strip().split('scan-')[-1][:4]
+    return 'scan-' + fname.strip().split('scan-')[-1][:4]
+
 
 def averageLargeScan(fname):
     """
@@ -412,33 +400,35 @@ def averageLargeScan(fname):
         no_of_frames = fh['/entry/instrument/pilatus/data'].shape[0]
         print(f'{no_of_frames} frames in scan')
         for i in range(no_of_frames):
-            if i<1:
+            if i < 1:
                 im = fh['/entry/instrument/pilatus/data'][0]
                 im_max = np.max(im)
             else:
                 im += fh['/entry/instrument/pilatus/data'][i]
-                im_max = max(im_max,np.max(im))
-            print(f'Progress: {i/(no_of_frames+1)*100:.1f}%',end='\r')
+                im_max = max(im_max, np.max(im))
+            print(f'Progress: {i / (no_of_frames + 1) * 100:.1f}%', end='\r')
     print()
     exposure = getExposureTime(fname)
-    print(f'Highest count rate in one frame: {im_max/exposure:,.2f} cps')
-    im = im/no_of_frames
+    print(f'Highest count rate in one frame: {im_max / exposure:,.2f} cps')
+    im = im / no_of_frames
     return im
-    
-def getAverageImage(fname='latest',proposal=None,visit=None):
+
+
+def getAverageImage(fname='latest', proposal=None, visit=None):
     """Return the average image of a scan - Default is the latest scan in the current folder"""
     if fname.lower() == 'latest':
-        fname = getLatestScan(proposal,visit)
+        fname = getLatestScan(proposal, visit)
     with h5py.File(fname, 'r') as fh:
         no_of_frames = fh['/entry/instrument/pilatus/data'].shape[0]
         if no_of_frames < 1000:
             im = fh['/entry/instrument/pilatus/data'][:]
             print(f'{no_of_frames} frames in scan')
             exposure = getExposureTime(fname)
-            print(f'Highest count rate in one frame: {np.max(im)/exposure:,.2f} cps')
-            return np.mean(im,axis=0)
+            print(f'Highest count rate in one frame: {np.max(im) / exposure:,.2f} cps')
+            return np.mean(im, axis=0)
     im = averageLargeScan(fname)
     return im
+
 
 def getHottestPixel(fname):
     """Return the count rate (per second) for the hottest pixel in a scan"""
@@ -446,11 +436,12 @@ def getHottestPixel(fname):
     with h5py.File(fname) as fh:
         max_counts = fh['/entry/instrument/pilatus/data'][:].max()
     exposure = getExposureTime(fname)
-    cps = max_counts/exposure
+    cps = max_counts / exposure
     print(f'Highest count rate in one frame: {cps:,.2f} cps')
     return cps
 
-def getMotorSteps(fname,proposal=None,visit=None):
+
+def getMotorSteps(fname, proposal=None, visit=None):
     """
     Return motor name(s), nominal positions, and registred positions for a given scan.
         Return list of lists [[motor_name_1,nominal,registred], ...]
@@ -463,29 +454,30 @@ def getMotorSteps(fname,proposal=None,visit=None):
     # remove scan type and all entries without letters
     motors = [s for s in scan_type if s.lower().islower()][1:]
     # remove boolean flags
-    motors = [m for m in motors if not 'false' in m.lower() and not 'true' in m.lower()]
+    motors = [m for m in motors if 'false' not in m.lower() and 'true' not in m.lower()]
     motor_steps = []
-    #print(motors)
+    # print(motors)
     for motor in motors:
         # get the nominal motor position from the macro title
-        #print(motor)
-        start, stop, steps = [scan_type[i+1:i+4] for i,s in enumerate(scan_type) if motor in s][0]
-        nominal_pos = np.linspace(float(start),float(stop),int(steps)+1)
+        # print(motor)
+        start, stop, steps = [scan_type[i + 1:i + 4] for i, s in enumerate(scan_type) if motor in s][0]
+        nominal_pos = np.linspace(float(start), float(stop), int(steps) + 1)
         # get the logged motor position
         motor_entry_id = [key for key in dic.keys() if motor in key][0]
         motor_pos = dic[motor_entry_id]
-        #motor_pos = np.unique(motor_pos)
+        # motor_pos = np.unique(motor_pos)
         # compare nominal and actual motor positions
         if not np.all(nominal_pos == motor_pos):
             print(f'The nominal and registred motor positions for {motor} do not match!')
-        motor_steps.append([motor,nominal_pos,motor_pos])
-    
+        motor_steps.append([motor, nominal_pos, motor_pos])
+
     return motor_steps
-    
-def getPixelCoords(pname,danmax_convention=True,corners=False):
+
+
+def getPixelCoords(pname, danmax_convention=True, corners=False):
     """
     Return the pixel coordinates in meter for a given PONI configuration
-    
+
     Parameters:
         pname             - PONI file path
         danmax_convention - (default=True) return the coordinates in the danmax laboratory convention,
@@ -500,38 +492,38 @@ def getPixelCoords(pname,danmax_convention=True,corners=False):
     """
     # read PONI and get xyz positions (in m)
     poni = geometry.core.ponifile.PoniFile(pname).as_dict()
-    geo = geometry.core.Geometry(**{key:poni[key] for key in ['dist', 'poni1', 'poni2', 'rot1', 'rot2', 'rot3','detector','wavelength']}) 
+    geo = geometry.core.Geometry(**{key: poni[key] for key in ['dist', 'poni1', 'poni2', 'rot1', 'rot2', 'rot3', 'detector', 'wavelength']})
     xyz = geo.position_array(corners=corners)
     if danmax_convention:
         if not corners:
             # convert to danmax convention NOTE: Might need to be flipped/rotated
-            # [h,w,(z,y,x)] --> [(x,y,z),h,w] 
-            xyz = np.transpose(xyz,axes=(2,0,1))[[2,1,0],:,:]
-            xyz[[0,1]] *= -1
+            # [h,w,(z,y,x)] --> [(x,y,z),h,w]
+            xyz = np.transpose(xyz, axes=(2, 0, 1))[[2, 1, 0], :, :]
+            xyz[[0, 1]] *= -1
         else:
-            # [h,w,4,(z,y,x)] --> [(x,y,z),(ul,ll,ur,lr),h,w] 
-            xyz_c = np.transpose(xyz,axes=(3,2,0,1))[[2,1,0],:,:,:]
-            xyz_c[[0,1]] *= -1
+            # [h,w,4,(z,y,x)] --> [(x,y,z),(ul,ll,ur,lr),h,w]
+            xyz_c = np.transpose(xyz, axes=(3, 2, 0, 1))[[2, 1, 0], :, :, :]
+            xyz_c[[0, 1]] *= -1
 
-            #[(x,y,z),h+1,w+1] 
-            xyz = np.full((3,xyz_c.shape[2]+1,xyz_c.shape[3]+1)
-                        ,0.)
+            # [(x,y,z),h+1,w+1]
+            xyz = np.full((3, xyz_c.shape[2] + 1, xyz_c.shape[3] + 1), 0.)
             # upper left
-            xyz[:,:-1,:-1] = xyz_c[:,0,:,:]
+            xyz[:, :-1, :-1] = xyz_c[:, 0, :, :]
             # lower left
-            xyz[:,-1,:-1] = xyz_c[:,1,-1,:]
+            xyz[:, -1, :-1] = xyz_c[:, 1, -1, :]
             # upper rigth
-            xyz[:,:-1,-1] = xyz_c[:,2,:,-1]
+            xyz[:, :-1, -1] = xyz_c[:, 2, :, -1]
             # lower right
-            xyz[:,-1,-1] = xyz_c[:,3,-1,-1]
+            xyz[:, -1, -1] = xyz_c[:, 3, -1, -1]
     return xyz
 
+
 def getAzintData(fname,
-                 get_meta = False,
-                 xrd_range = None,
-                 azi_range = None,
-                 proposal = None,
-                 visit = None):
+                 get_meta=False,
+                 xrd_range=None,
+                 azi_range=None,
+                 proposal=None,
+                 visit=None):
     '''
         Return azimuthally integrated data for a specified file path. File name can be either the /raw/**/master.h5 or the /process/azint/**/*_pilatus_integrated_master.h5
         Dictionary entries for missing or irrelevant fields are set to None
@@ -548,13 +540,13 @@ def getAzintData(fname,
                 meta - dictionary
     '''
     # get the azimuthally integrated filename from provided file name,
-    if type(fname) == int:
-        fname = findscan(fname,proposal=proposal,visit=visit)
+    if isinstance(fname, int):
+        fname = findscan(fname, proposal=proposal, visit=visit)  # noqa: F405 (from lib.misc star import)
     if '/raw/' in fname:
         aname = getAzintFname(fname)
     else:
         aname = fname
-        fname = aname.replace('process/azint','raw').replace('_pilatus_integrated.h5','.h5')
+        fname = aname.replace('process/azint', 'raw').replace('_pilatus_integrated.h5', '.h5')
     # define output dictionary
     data = {
         'I': None,
@@ -568,43 +560,42 @@ def getAzintData(fname,
         'I_error': None,
         'cake_error': None,
         }
-    
+
     # define h5 data group names
     group_1D = 'entry/data1d'
     group_2D = 'entry/data2d'
     group_meta = 'entry/azint'
-    
+
     # define key reference dictionary
     data_keys = {
-        'I'         : f'{group_1D}/I',
-        'cake'      : f'{group_2D}/cake',
-        'q'         : f'{group_1D}/q',
-        'tth'       : f'{group_1D}/2th',
-        'azi'       : f'{group_2D}/azi',
-        'q_edge'    : f'{group_1D}/q_edges',
-        'tth_edge'  : f'{group_1D}/tth_edges',
-        'azi_edge'  : f'{group_2D}/azi_edges',
-        'I_error'   : f'{group_1D}/I_error',
+        'I': f'{group_1D}/I',
+        'cake': f'{group_2D}/cake',
+        'q': f'{group_1D}/q',
+        'tth': f'{group_1D}/2th',
+        'azi': f'{group_2D}/azi',
+        'q_edge': f'{group_1D}/q_edges',
+        'tth_edge': f'{group_1D}/tth_edges',
+        'azi_edge': f'{group_2D}/azi_edges',
+        'I_error': f'{group_1D}/I_error',
         'cake_error': f'{group_2D}/cake_error',
-        'norm'      : f'{group_2D}/norm',
+        'norm': f'{group_2D}/norm',
         }
-    
+
     # define key reference dictionary for old data format
     data_keys_old = {
-        'I':        'I',
-        'cake':     'I',
-        'q':        'q',
-        'tth':      '2th',
-        'azi':      'phi',
+        'I': 'I',
+        'cake': 'I',
+        'q': 'q',
+        'tth': '2th',
+        'azi': 'phi',
         'azi_edge': 'bin_bounds',
         }
 
-
-    #define range keys
+    # define range keys
     range_keys = {
-        'q':'xrd',
-        'tth':'xrd',
-        'azi':'azi' 
+        'q': 'xrd',
+        'tth': 'xrd',
+        'azi': 'azi'
         }
 
     # define range dictionary
@@ -613,31 +604,31 @@ def getAzintData(fname,
         'azi': azi_range,
         }
 
-    #define initial rois
+    # define initial rois
     rois = {
-        'xrd': np.s_[:], 
+        'xrd': np.s_[:],
         'azi': np.s_[:],
         }
 
     meta = {}
 
     # read the *_pilatus_integrated.h5 file
-    with h5py.File(aname,'r') as af:
+    with h5py.File(aname, 'r') as af:
         if 'entry' in af.keys():
-            ### NeXus format ###
+            # NeXus format
             if get_meta:
                 # read meta data
                 for key in af[group_meta].keys():
-                    if isinstance(af[group_meta][key],h5py.Dataset):
+                    if isinstance(af[group_meta][key], h5py.Dataset):
                         # check if value is a scalar
-                        if len(af[group_meta][key].shape)==0:
+                        if len(af[group_meta][key].shape) == 0:
                             meta[key] = af[group_meta][key][()]
                         else:
                             meta[key] = af[group_meta][key][:]
                     else:
                         meta[key] = {}
                         for subkey in af[group_meta][key].keys():
-                            if len(af[group_meta][key][subkey].shape)==0:
+                            if len(af[group_meta][key][subkey].shape) == 0:
                                 meta[key][subkey] = af[group_meta][key][subkey][()]
                             else:
                                 meta[key][subkey] = af[group_meta][key][subkey][:]
@@ -646,7 +637,6 @@ def getAzintData(fname,
                 if 'filename' in af[group_meta]['input/poni'].attrs.keys():
                     meta['input']['poni_filename'] = af[group_meta]['input/poni'].attrs['filename']
 
-            
             # update needed rois
             for key in range_keys.keys():
                 if data_keys[key] in af:
@@ -661,9 +651,9 @@ def getAzintData(fname,
                                 if i == 0:
                                     i = None
                                 break
-                        for j in range(-1,-len(rois[key]),-1):
+                        for j in range(-1, -len(rois[key]), -1):
                             if rois[key][j]:
-                                j=j+1
+                                j = j + 1
                                 if j == 0:
                                     j = None
                                 break
@@ -672,14 +662,14 @@ def getAzintData(fname,
             for key in data.keys():
                 if data_keys[key] in af:
                     # check if value is a scalar
-                    if len(af[data_keys[key]].shape)==0:
+                    if len(af[data_keys[key]].shape) == 0:
                         data[key] = af[data_keys[key]][()]
-                    elif len(af[data_keys[key]].shape)>2:
-                        data[key] = af[data_keys[key]][:,rois['azi'],rois['xrd']]
-                    elif len(af[data_keys[key]].shape)>1:
-                        data[key] = af[data_keys[key]][:,rois['xrd']]
-                    elif  key in range_keys.keys() and  ranges[range_keys[key]] is not None: 
-                       data[key] = af[data_keys[key]][rois[range_keys[key]]]
+                    elif len(af[data_keys[key]].shape) > 2:
+                        data[key] = af[data_keys[key]][:, rois['azi'], rois['xrd']]
+                    elif len(af[data_keys[key]].shape) > 1:
+                        data[key] = af[data_keys[key]][:, rois['xrd']]
+                    elif key in range_keys.keys() and ranges[range_keys[key]] is not None:
+                        data[key] = af[data_keys[key]][rois[range_keys[key]]]
                     else:
                         data[key] = af[data_keys[key]][:]
         else:
@@ -696,15 +686,15 @@ def getAzintData(fname,
                                 if i == 0:
                                     i = None
                                 break
-                        for j in range(-1,-len(rois[key]),-1):
+                        for j in range(-1, -len(rois[key]), -1):
                             if rois[key][j]:
-                                j=j+1
+                                j = j + 1
                                 if j == 0:
                                     j = None
                                 break
                         rois[key] = np.s_[i:j]
 
-            ### old format ###,
+            # old format ###,
             for key in data_keys_old.keys():
                 # differentiate between 1D and 2D data and update dictionary key accordingly
                 if data_keys_old[key] == 'I':
@@ -715,70 +705,70 @@ def getAzintData(fname,
                 # check if the current key is available in the file
                 if data_keys_old[key] in af:
                     # check if value is a scalar
-                    if len(af[data_keys_old[key]].shape)==0:
-                        data[key]=af[data_keys_old[key]][()]
+                    if len(af[data_keys_old[key]].shape) == 0:
+                        data[key] = af[data_keys_old[key]][()]
                     elif len(af[data_keys_old[key]].shape) > 2:
-                        data[key]=af[data_keys_old[key]][:,rois['azi'],rois['xrd']]
+                        data[key] = af[data_keys_old[key]][:, rois['azi'], rois['xrd']]
                     elif len(af[data_keys_old[key]].shape) > 1:
-                        data[key]=af[data_keys_old[key]][:,rois['xrd']]
-                    elif  key in range_keys.keys() and  ranges[range_keys[key]] is not None: 
-                       data[key] = af[data_keys[key]][rois[range_keys[key]]]
+                        data[key] = af[data_keys_old[key]][:, rois['xrd']]
+                    elif key in range_keys.keys() and ranges[range_keys[key]] is not None:
+                        data[key] = af[data_keys[key]][rois[range_keys[key]]]
                     else:
-                        data[key]=af[data_keys_old[key]][:]
+                        data[key] = af[data_keys_old[key]][:]
             if get_meta:
                 # read remaining entries as meta data
                 for key in af.keys():
                     if key not in data_keys_old.values():
                         # check if value is a scalar
-                        if len(af[key].shape)==0:
-                            meta[key]=af[key][()]
+                        if len(af[key].shape) == 0:
+                            meta[key] = af[key][()]
                         else:
-                            meta[key]=af[key][:]
+                            meta[key] = af[key][:]
     # Add bin edges if they are not included.
     for edge_key in ['q', 'tth', 'azi']:
-        #Check if the slot was filled in in the first place
-        if (type(data[f'{edge_key}']) != type(None)) and (type(data[f'{edge_key}_edge']) == type(None)):
+        # Check if the slot was filled in in the first place
+        if (not isinstance(data[f'{edge_key}'], type(None))) and (isinstance(data[f'{edge_key}_edge'], type(None))):
             data[f'{edge_key}_edge'] = data[f'{edge_key}']
 
             bin_width = np.nanmean(np.abs(np.diff(data[f'{edge_key}'])))
-            #print(f'Generating edges for {edge_key}, assuming an equidistant bin width of: {bin_width:.6f} unit({edge_key})')
-            data[f'{edge_key}_edge'] = np.append(data[f'{edge_key}_edge'],data[f'{edge_key}_edge'][-1]+bin_width)
-            data[f'{edge_key}_edge'] -= bin_width/2
+            # print(f'Generating edges for {edge_key}, assuming an equidistant bin width of: {bin_width:.6f} unit({edge_key})')
+            data[f'{edge_key}_edge'] = np.append(data[f'{edge_key}_edge'], data[f'{edge_key}_edge'][-1] + bin_width)
+            data[f'{edge_key}_edge'] -= bin_width / 2
 
     meta_length = None
     if os.path.isfile(fname):
-        keys=None
+        keys = None
         try:
-            with h5py.File(fname,'r') as f:
+            with h5py.File(fname, 'r') as f:
                 keys = sorted(list(f['/entry/instrument'].keys()))
-                meta_length = f['/entry/instrument'][keys[0]+'/data'].shape[0]
+                meta_length = f['/entry/instrument'][keys[0] + '/data'].shape[0]
         except KeyError:
             if keys is None:
                 print(f'Unable to access {fname}::/entry/instrument/../')
             else:
                 print(f'Unable to access {fname}::/entry/instrument/{keys[0]}/data')
 
-    if data['I'][:meta_length].shape[0]<data['I'].shape[0] and not meta_length is None:
+    if data['I'][:meta_length].shape[0] < data['I'].shape[0] and meta_length is not None:
         print(f'Data size mismatch - cropped to {meta_length} frames')
-    
+
     data['I'] = data['I'][:meta_length]
     if not data['cake'] is None:
         data['cake'] = data['cake'][:meta_length]
-    
+
     if get_meta:
         return data, meta
     else:
         return data
 
 
-def interactiveImageHist(im,ignore_zero=False):
+def interactiveImageHist(im, ignore_zero=False):
     """
     Plot an interactive image with histogram to easily adjust lower and upper thresholds
         Parameters
             im          - Image as an (n,m) numpy array
             ignore_zero - Ignore pixel values less than or equal to zero (default False)
     """
-    def plotImageHistogram(im,ignore_zero=False):
+    def plotImageHistogram(im, ignore_zero=False):
         """
         Plot an image with histogram
             Parameters
@@ -792,27 +782,27 @@ def interactiveImageHist(im,ignore_zero=False):
         """
         if ignore_zero:
             # remove negative and nan pixels
-            _im = im[im>0]
+            _im = im[im > 0]
         else:
             # remove nan pixels
             _im = im[~np.isnan(im)]
         # generate bin edges and centers
-        edges = np.linspace(np.min(_im),np.max(_im),256)
-        cen = edges[:-1]+np.mean(np.diff(edges))/2
+        edges = np.linspace(np.min(_im), np.max(_im), 256)
+        cen = edges[:-1] + np.mean(np.diff(edges)) / 2
         # create histogram
-        val, edges = np.histogram(_im,bins=edges,density=True)
+        val, edges = np.histogram(_im, bins=edges, density=True)
         vmax = cen[np.argmin(np.abs(np.diff(val[np.argmax(val):])))]
-        
+
         # estimate appropriate figure aspect ratio
-        #im_aspect = im.shape[0]/im.shape[1]
-        width_ratios=[10,1]
-        #ax_aspect = 1+(width_ratios[1]/np.sum(width_ratios))
-        #fig_aspect = im_aspect*ax_aspect
-    
-        #fig = plt.figure(figsize=(5*fig_aspect,5))
+        # im_aspect = im.shape[0]/im.shape[1]
+        width_ratios = [10, 1]
+        # ax_aspect = 1+(width_ratios[1]/np.sum(width_ratios))
+        # fig_aspect = im_aspect*ax_aspect
+
+        # fig = plt.figure(figsize=(5*fig_aspect,5))
         fig = plt.figure()
         # initialize grid and subplot with different size-ratios
-        grid = plt.GridSpec(1,2,width_ratios=width_ratios) #rows,columns
+        grid = plt.GridSpec(1, 2, width_ratios=width_ratios)  # rows,columns
         ax0, ax1 = [fig.add_subplot(gr) for gr in grid]
         # set tick parameters
         ax0.set_xticks([])
@@ -820,45 +810,46 @@ def interactiveImageHist(im,ignore_zero=False):
         ax1.set_xticks([])
         ax1.yaxis.tick_right()
         # plot image
-        cm = ax0.imshow(im,vmax=vmax)
-        vmin,vmax = cm.get_clim()
+        cm = ax0.imshow(im, vmax=vmax)
+        vmin, vmax = cm.get_clim()
         # plot histogram
-        ax1.plot(val,cen)
-        ax1.set_ylim(vmin,vmax)
+        ax1.plot(val, cen)
+        ax1.set_ylim(vmin, vmax)
         fig.tight_layout()
         return fig, cm, ax0, ax1
 
     # initialize the figure
-    fig, cm, ax0, ax1 = plotImageHistogram(im,ignore_zero=ignore_zero)
+    fig, cm, ax0, ax1 = plotImageHistogram(im, ignore_zero=ignore_zero)
 
-    # make a simple function to update the displayed image 
-    def update_clim(vmin=0,vmax=100,log=False):
+    # make a simple function to update the displayed image
+    def update_clim(vmin=0, vmax=100, log=False):
         """function for updating the image color limit. Called by ipywidgets.interact()"""
         norm = 'log' if log else 'linear'
         cm.set_norm(norm)
         ax1.set_yscale(norm)
-        cm.set_clim(vmin,vmax)
-        ax1.set_ylim(vmin,vmax)
-        #ax0.set_title(f'vmin: {vmin:.2E}   vmax:{vmax:.2E}',
+        cm.set_clim(vmin, vmax)
+        ax1.set_ylim(vmin, vmax)
+        # ax0.set_title(f'vmin: {vmin:.2E}   vmax:{vmax:.2E}',
         #              loc='left',
         #              fontdict={'fontsize':'small'})
-        #return f'vmin: {vmin:.3E}   vmax:{vmax:.3E}'
+        # return f'vmin: {vmin:.3E}   vmax:{vmax:.3E}'
         return f'{vmin:.3E}   {vmax:.3E}'
     # find vmin/vmax range and step size
-    vmin,vmax = np.nanmin(im),np.nanmax(im)
-    step = (vmax-vmin)/1000
+    vmin, vmax = np.nanmin(im), np.nanmax(im)
+    step = (vmax - vmin) / 1000
     # start interactive widget
     inter = interact(update_clim,
-                     vmin=(vmin,vmax,step),
-                     vmax=(vmin,vmax,step),
+                     vmin=(vmin, vmax, step),
+                     vmax=(vmin, vmax, step),
                      log=False)
     return inter.widget
 
+
 class InteractiveMask():
     """
-    Interactive mask tool for 2D or 3D images. The tool allows the user to draw a mask on the image by 
+    Interactive mask tool for 2D or 3D images. The tool allows the user to draw a mask on the image by
     clicking and dragging the mouse. The mask can be saved and used for further analysis. The tool also
-    allows the user to set a threshold on the histogram of the image to create a binary mask. The tool 
+    allows the user to set a threshold on the histogram of the image to create a binary mask. The tool
     is implemented using matplotlib and numpy.
     Parameters:
     images: 2D or 3D numpy array of images
@@ -871,24 +862,25 @@ class InteractiveMask():
     InteractiveMask object
         Use the getResult() method to get the mask.
     """
+
     def __init__(self, images, reduction_mode='std', mask_alpha=0.3, *args, **kwargs):
         self.reduction_mode = reduction_mode
         self.is_darkmode = not plt.rcParams['axes.facecolor'] == 'white'
         if self.is_darkmode:
-            self.line_color='w'
+            self.line_color = 'w'
         else:
-            self.line_color='k'
+            self.line_color = 'k'
 
         if len(images.shape) == 3:
             # add an additional third subplot for the ROI above the image plot
-            self.fig, axes = plt.subplots(2, 2, gridspec_kw={'height_ratios': [1, 6], 'width_ratios': [6, 1]},*args, **kwargs)
+            self.fig, axes = plt.subplots(2, 2, gridspec_kw={'height_ratios': [1, 6], 'width_ratios': [6, 1]}, *args, **kwargs)
             self.ax = {'image': axes[1, 0], 'hist': axes[1, 1], 'roi': axes[0, 0]}
             # delete the unused axis
             axes[0, 1].remove()
             self.roi = np.ones(images.shape[2], dtype=bool)
             self._initRoi(images)
         else:
-            self.fig, axes = plt.subplots(1, 2, gridspec_kw={'width_ratios': [6, 1]},*args, **kwargs)
+            self.fig, axes = plt.subplots(1, 2, gridspec_kw={'width_ratios': [6, 1]}, *args, **kwargs)
             self.ax = {'image': axes[0], 'hist': axes[1]}
         self.canvas = self.fig.canvas
 
@@ -905,28 +897,26 @@ class InteractiveMask():
         self.threshold_mask = np.zeros(self.image.shape, dtype=int)
 
         self.mask_alpha = mask_alpha
-        
+
         # create the mask as the boolean combination of the threshold mask and the manual mask
         self.mask = self.threshold_mask + self.manual_mask
-        
+
         self._initImage()
 
         # create the histogram plot with swapped axis
         self._initHist()
         self.updateHist()
         self.updateThreshold(self.ax['hist'].get_ylim()[-1], 'red')
-        
+
         # add a discrete text label below the image plot
         notification = self.ax['image'].text(0.0, -0.05, 'Untoggle zoom/pan in the toolbar to use the mask tools',
-                              horizontalalignment='left', verticalalignment='center', 
-                              transform=self.ax['image'].transAxes,
-                              fontsize=8, color='red')
+                                             horizontalalignment='left', verticalalignment='center',
+                                             transform=self.ax['image'].transAxes,
+                                             fontsize=8, color='red')
         notification.set_visible(False)
-
 
         self.canvas.mpl_connect('motion_notify_event', self.ondrag)
         self.canvas.mpl_connect('button_press_event', self.onclick)
-
 
     def _initImage(self):
         # create the image plot
@@ -940,10 +930,10 @@ class InteractiveMask():
         self.ax['image'].set_xticks([])
         self.ax['image'].set_yticks([])
         self.ax['image'].set_title('Interactiv mask tool')
-    
+
     def _initHist(self):
         # create the histogram plot with swapped axis
-        self.hist = self.ax['hist'].plot([0],[0], color=self.line_color)[0]
+        self.hist = self.ax['hist'].plot([0], [0], color=self.line_color)[0]
         # remove ticks
         self.ax['hist'].set_xticks([])
         self.ax['hist'].set_yticks([])
@@ -952,9 +942,9 @@ class InteractiveMask():
         self.threshold_line_red = self.ax['hist'].axhline(0, color='r', lw=2)
         self.threshold_line_blue = self.ax['hist'].axhline(0, color='b', lw=2)
 
-    def _initRoi(self,images):
+    def _initRoi(self, images):
         # create the roi plot
-        y_mean = np.mean(images,axis=(0,1))
+        y_mean = np.mean(images, axis=(0, 1))
         self.roi_plot = self.ax['roi'].plot(y_mean, color=self.line_color)[0]
         self.ax['roi'].set_xticks([])
         self.ax['roi'].set_yticks([])
@@ -999,23 +989,23 @@ class InteractiveMask():
         cen, hist = self.calcHistogram()
         self.hist.set_data(hist, cen)
         # autoscale the histogram plot
-        self.ax['hist'].set_ylim(cen[0]-5, cen[-1]+5)
+        self.ax['hist'].set_ylim(cen[0] - 5, cen[-1] + 5)
         self.ax['hist'].set_xlim(-0.05, 1.1 * max(hist))
         self.updateThreshold(self.ax['hist'].get_ylim()[-1], 'red')
 
     def reduce_images(self, images, mode='std'):
         """
         reduce the images along the third axis using the specified mode.
-        modes: 'std', 'mean', 'max', 'min'        
+        modes: 'std', 'mean', 'max', 'min'
         """
         if mode == 'std':
-            return np.std(images[:,:,self.roi], axis=2)
+            return np.std(images[:, :, self.roi], axis=2)
         elif mode == 'mean':
-            return np.mean(images[:,:,self.roi], axis=2)
+            return np.mean(images[:, :, self.roi], axis=2)
         elif mode == 'max':
-            return np.max(images[:,:,self.roi], axis=2)
+            return np.max(images[:, :, self.roi], axis=2)
         elif mode == 'min':
-            return np.min(images[:,:,self.roi], axis=2)
+            return np.min(images[:, :, self.roi], axis=2)
         elif mode == 'none':
             return images
         else:
@@ -1057,11 +1047,11 @@ class InteractiveMask():
             elif event.inaxes == self.ax['hist']:
                 threshold = event.ydata
                 if event.button == 1:
-                    self.updateThreshold(threshold,'blue')
+                    self.updateThreshold(threshold, 'blue')
                 elif event.button == 3:
-                    self.updateThreshold(threshold,'red')
-                #self.threshold_line.set_visible(True)
-                #self.updateThreshold(event.ydata)
+                    self.updateThreshold(threshold, 'red')
+                # self.threshold_line.set_visible(True)
+                # self.updateThreshold(event.ydata)
                 plt.draw()
             # check if the click is in the roi plot
             elif 'roi' in self.ax and event.inaxes == self.ax['roi']:
@@ -1079,25 +1069,26 @@ class InteractiveMask():
         """Return the red to transparent colormap"""
         # Define the color transition
         cdict = {
-            'red':   [(0.0, 1.0, 1.0),  # Red at the start
-                    (1.0, 1.0, 1.0)], # Red at the end
+            'red': [(0.0, 1.0, 1.0),  # Red at the start
+                    (1.0, 1.0, 1.0)],  # Red at the end
             'green': [(0.0, 0.0, 0.0),  # No green at the start
-                    (1.0, 0.0, 0.0)], # No green at the end
-            'blue':  [(0.0, 0.0, 0.0),  # No blue at the start
-                    (1.0, 0.0, 0.0)], # No blue at the end
+                      (1.0, 0.0, 0.0)],  # No green at the end
+            'blue': [(0.0, 0.0, 0.0),  # No blue at the start
+                     (1.0, 0.0, 0.0)],  # No blue at the end
             'alpha': [(0.0, 1.0, 1.0),  # Fully opaque at the start
-                    (1.0, 0.0, 0.0)]  # Fully transparent at the end
+                      (1.0, 0.0, 0.0)]  # Fully transparent at the end
         }
 
         # Create the colormap
         red_to_transparent = LinearSegmentedColormap('RedToTransparent', cdict)
         return red_to_transparent
-    
+
     def getResult(self):
         """Return combined mask"""
         return self.mask
-        
-def darkMode(use=True,style_dic={'figure.figsize':'small'}):
+
+
+def darkMode(use=True, style_dic={'figure.figsize': 'small'}):
     """
     Toggle between dark and light mode styles for matplotlib figures.
     Use style_dic to quickly customize the styles. (see plt.rcParams for available keys)
@@ -1105,53 +1096,53 @@ def darkMode(use=True,style_dic={'figure.figsize':'small'}):
     Use plt.style.use('default') to revert to the matplotlib default style
     """
     # dictionary of short hand keywords
-    short_hand = {'size' :'figure.figsize',
-                  'grid' : 'axes.grid'}
+    short_hand = {'size': 'figure.figsize',
+                  'grid': 'axes.grid'}
     # replace short hand keys with full name keywords
     keys = list(style_dic.keys())
     for key in keys:
         if key in short_hand.keys():
-            style_dic[short_hand[key]]=style_dic[key]
+            style_dic[short_hand[key]] = style_dic[key]
             style_dic.pop(key)
 
-    if 'figure.figsize' in style_dic and type(style_dic['figure.figsize']) == str:
+    if 'figure.figsize' in style_dic and isinstance(style_dic['figure.figsize'], str):
         if style_dic['figure.figsize'].lower() == 'small':
-            style_dic['figure.figsize'] = [8.533,4.8]
+            style_dic['figure.figsize'] = [8.533, 4.8]
         elif style_dic['figure.figsize'].lower() == 'medium':
             style_dic['figure.figsize'] = [10.267, 5.775]
         elif style_dic['figure.figsize'].lower() == 'large':
             style_dic['figure.figsize'] = [12, 6.75]
-    
+
     light_mode = {'axes.formatter.use_mathtext': True,
-                 'axes.formatter.useoffset': False,
-                 'axes.xmargin': 0.02,
-                 'axes.ymargin': 0.02,
-                 'axes.grid': True,
-                 'font.family': 'DejaVu Sans Mono',
-                 'xtick.minor.visible': True,
-                 'ytick.minor.visible': True,
-                 'lines.linewidth': 1.,
-                 'lines.markersize':3.,
-                 'axes.prop_cycle': cycler('color', ['#1f77b4', 
-                                                     '#ff7f0e', 
-                                                     '#2ca02c', 
-                                                     '#d62728', 
-                                                     '#9467bd', 
-                                                     '#8c564b', 
-                                                     '#e377c2', 
-                                                     '#7f7f7f', 
-                                                     '#bcbd22', 
-                                                     '#17becf',
-                                                     '#000000',
-                                                     '#000066',
-                                                     '#CC9900',
-                                                     '#006600',
-                                                     '#660000',
-                                                    ]),
-                'figure.autolayout': True,
-                'figure.dpi': 100.0,
-                }
-    
+                  'axes.formatter.useoffset': False,
+                  'axes.xmargin': 0.02,
+                  'axes.ymargin': 0.02,
+                  'axes.grid': True,
+                  'font.family': 'DejaVu Sans Mono',
+                  'xtick.minor.visible': True,
+                  'ytick.minor.visible': True,
+                  'lines.linewidth': 1.,
+                  'lines.markersize': 3.,
+                  'axes.prop_cycle': cycler('color', ['#1f77b4',
+                                                      '#ff7f0e',
+                                                      '#2ca02c',
+                                                      '#d62728',
+                                                      '#9467bd',
+                                                      '#8c564b',
+                                                      '#e377c2',
+                                                      '#7f7f7f',
+                                                      '#bcbd22',
+                                                      '#17becf',
+                                                      '#000000',
+                                                      '#000066',
+                                                      '#CC9900',
+                                                      '#006600',
+                                                      '#660000',
+                                                      ]),
+                  'figure.autolayout': True,
+                  'figure.dpi': 100.0,
+                  }
+
     dark_mode = {'axes.facecolor': '#1a1a1a',
                  'axes.edgecolor': '#E0E0E0',
                  'axes.labelcolor': '#E0E0E0',
@@ -1163,25 +1154,25 @@ def darkMode(use=True,style_dic={'figure.figsize':'small'}):
                  'figure.edgecolor': '#1a1a1a',
                  'savefig.facecolor': '#1a1a1a',
                  'savefig.edgecolor': '#1a1a1a',
-                 'legend.edgecolor':  '#2a2a2a',
-                 'axes.prop_cycle': cycler('color', ['#1f77b4', 
-                                                     '#ff7f0e', 
-                                                     '#2ca02c', 
-                                                     '#d62728', 
-                                                     '#9467bd', 
-                                                     '#8c564b', 
-                                                     '#e377c2', 
-                                                     '#7f7f7f', 
-                                                     '#bcbd22', 
+                 'legend.edgecolor': '#2a2a2a',
+                 'axes.prop_cycle': cycler('color', ['#1f77b4',
+                                                     '#ff7f0e',
+                                                     '#2ca02c',
+                                                     '#d62728',
+                                                     '#9467bd',
+                                                     '#8c564b',
+                                                     '#e377c2',
+                                                     '#7f7f7f',
+                                                     '#bcbd22',
                                                      '#17becf',
                                                      '#FFFFFF',
                                                      '#000066',
                                                      '#CC9900',
                                                      '#006600',
                                                      '#660000',
-                                                    ])
-                }
-    
+                                                     ])
+                 }
+
     light_mode.update(style_dic)
     plt.style.use('default')
     plt.style.use(light_mode)
@@ -1189,19 +1180,21 @@ def darkMode(use=True,style_dic={'figure.figsize':'small'}):
         plt.style.use(dark_mode)
     return plt.rcParams
 
-def lightMode(use=True,style_dic={}):
+
+def lightMode(use=True, style_dic={}):
     """
     Toggle between light and dark mode styles for matplotlib figures.
     Use style_dic to quickly customize the styles. (see plt.rcParams for available keys)
     Use style_dic={'figure.figsize':'small'/'medium'/'large'} to quickly change figure size
     Use plt.style.use('default') to revert to the matplotlib default style
     """
-    return darkMode(not use,style_dic={})
+    return darkMode(not use, style_dic={})
 
-#darkMode(use_dark_mode)
+# darkMode(use_dark_mode)
 
-#if use_dark_mode:
+
+# if use_dark_mode:
 #    print(f'DanMAX.py Version {version} - Dark mode')
-#else:
+# else:
 #    print(f'DanMAX.py Version {version}')
 print(f'DanMAX.py Version {version}')

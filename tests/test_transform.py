@@ -33,4 +33,5 @@ def test_identity_affine_preserves_values():
             out = tr.transform_chunk(0)
 
         # Identity transform with linear interpolation: result close to input.
-        np.testing.assert_allclose(out[0].astype(np.float32), arr[0:1].astype(np.float32), atol=2)
+        # transform_chunk(0) returns a 3D chunk of shape (1, 16, 16) — the first slice of the input.
+        np.testing.assert_allclose(out.astype(np.float32), arr[0:1].astype(np.float32), atol=2)

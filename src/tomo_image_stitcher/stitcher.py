@@ -1654,7 +1654,25 @@ class Stitcher:
         """
         This function sets the current temporary stitch parameters in the final ones that can then be used for the full stitching.
         """
-        self.params_final = deepcopy(self.params_temp)  # (start_slice, end_slice, mask, mask_radius, alpha, use_equalize, square_dist, crop_x, crop_y)
+        if self.params_temp is None:
+            # No test stitch was performed (e.g. caller skipped the equalization
+            # learning step). Populate sensible defaults so that stitch_layers()
+            # can still read crop_x / crop_y / mask / etc. without crashing.
+            self.params_final = {
+                "start_slice": None,
+                "end_slice": None,
+                "mask": True,
+                "mask_radius": None,
+                "alpha": 1.0,
+                "use_equalize": False,
+                "normalize_dist_radially": False,
+                "square_dist": False,
+                "crop_x": (0, 0),
+                "crop_y": (0, 0),
+                "exclude_NCC": True,
+            }
+        else:
+            self.params_final = deepcopy(self.params_temp)
         return print("Parameters ready!")
 
     def get_transformed_slices(self, layer=0, image=0, start_slice=None, end_slice=None, mask=False, mask_radius=None):
@@ -1927,10 +1945,13 @@ class Stitcher:
                     h5_file.create_dataset(key, data=layer_info_dict[key])
                 # Distribute the final parameters
                 for key in self.params_final.keys():
-                    if isinstance(self.params_final, type(None)):
+                    value = self.params_final[key]
+                    if isinstance(value, type(None)):
                         h5_file.create_dataset(key, data="None")
+                    elif isinstance(value, (tuple, list)):
+                        h5_file.create_dataset(key, data=np.asarray(value))
                     else:
-                        h5_file.create_dataset(key, data=self.params_final[key])
+                        h5_file.create_dataset(key, data=value)
 
                 # An index to keep track of the appended slices on the h5 file
                 j = 0

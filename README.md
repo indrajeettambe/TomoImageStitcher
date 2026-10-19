@@ -164,8 +164,8 @@ TomoImageStitcher/
 
 If you use TomoImageStitcher in your research, please cite it using the
 metadata in [`CITATION.cff`](CITATION.cff). A publication describing the
-algorithm is in preparation and will be linked here when available
-([PUBLICATION]).
+algorithm is here:
+Tambe, I., Laçaj, E., Olsson, P. A., Hallberg, H., Engqvist, J., Orbulov, I. N., & Hektor, J. (2026). Evaluation of stitching-induced strain uncertainties in extended-field-of-view in situ X-ray tomography. Materials Characterization, 240, 116852. https://doi.org/10.1016/j.matchar.2026.116852
 
 ---
 

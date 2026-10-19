@@ -65,6 +65,41 @@ Try:
 * `prop_x_y=(0, 0)` (Chebyshev) for "square" distance propagation, useful
   when the slices are arranged on a regular grid.
 
+## Visible intensity steps between tiles
+
+The stitched volume shows bright or dark seams along tile boundaries even
+though the tiles register well.
+
+This is almost always intensity equalisation rather than registration. Check in
+this order:
+
+1. **Is it the equalisation being applied inconsistently?** When
+   `stitch_volumes_blend_equalize` is used to measure the factors and
+   `stitch_layers(..., use_existing_equalize=True)` is used to apply them to the
+   full volume, both steps must map a tile the same way. The factors come from
+   `linregress(tile, mosaic)`, i.e. `mosaic ~ slope * tile + intercept`, so the
+   image must be mapped with `img * slope + intercept`. Mapping it as
+   `(img + intercept) * slope` is a different transform — the two agree only
+   when the intercept is 0 or the slope is 1 — and leaves a step at every tile
+   boundary. Versions before this fix used the second form when reusing the
+   factors.
+
+2. **Are the overlaps actually informative?** Neighbouring tiles that only just
+   touch have very little common material, and the fitted slope is then noise.
+   Check how many tiles were left on the identity; if most of them were, the
+   measurement is weak regardless of how it is applied.
+
+3. **Is it a grey-scale difference rather than a stitching artefact?** If each
+   tile is internally uniform but neighbouring tiles differ in brightness, the
+   tiles were reconstructed with different transfer functions. That has to be
+   corrected per tile before stitching (divide each tile by its own background
+   level); no blend or equalisation setting will remove it.
+
+Note that equalisation cannot fix a genuine grey-scale difference between tiles:
+it matches each tile to the part of the mosaic it already overlaps, so a tile
+that is uniformly too bright stays uniformly too bright everywhere it is
+visible.
+
 ## TomoImageStitcher hangs at `stitch_volumes_blend_equalize_parallel`
 
 `multiprocessing.Pool` is not compatible with CuPy on some setups — the

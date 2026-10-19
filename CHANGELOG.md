@@ -32,6 +32,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `use_existing_equalize` applies the same validity check to the factors it reads.
   *(Indrajeet Tambe, 2026-10-19)*
 
+* docs/installation: the documented CPU fallback
+  `pip install cupy-cuda11x==13.0 --install-option="--no-cuda"` no longer works.
+  pip removed `--install-option` in 23.1 in favour of `--config-settings`, so the
+  command now fails with `no such option: --install-option` (verified on
+  pip 26.1.2). Replaced with a supported command, and noted that a CPU-only
+  CuPy is not equivalent to a CUDA build for this project because the
+  correlation engine dispatches to CuPy kernels.
+  *(Indrajeet Tambe, 2026-10-19)*
+
+* docs/troubleshooting: added a "Visible intensity steps between tiles" entry.
+  Registration that reports a good NCC but a mosaic with seams along tile
+  boundaries is usually an equalisation problem rather than a registration one;
+  the entry gives the order to check it in, and states plainly that
+  equalisation cannot remove a genuine per-tile grey-scale difference, because
+  each tile is only ever matched to the part of the mosaic it overlaps.
+  *(Indrajeet Tambe, 2026-10-19)*
+
 ## [0.2.0] - 2025-01-01
 
 Initial public release. Includes:

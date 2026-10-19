@@ -1581,16 +1581,47 @@ class Stitcher:
                             distance_map_red = np.where((intersection_j_1 != 0) & (~distance_map_red_mask), 1, distance_map_red)
 
                             if use_equalize:
-                                # Get the slope and intercept of the joint histogram for equalizing the slices
-                                slope, intercept, r, p, se = linregress(img_slices_j_1[distance_map_red_mask], intersection_j_1[distance_map_red_mask])
+                                # Get the slope and intercept of the joint histogram for equalizing the slices.
+                                # linregress is called with x = tile, y = mosaic, so the map that brings
+                                # the tile onto the mosaic is  mosaic ~ slope * tile + intercept, and that
+                                # is the form the image must be mapped with below AND when these factors
+                                # are reused later (see use_existing_equalize).
+                                #
+                                # Only mutually non-zero samples are used. The circular mask leaves zeros
+                                # inside the blend region, and feeding those to the fit drags it towards
+                                # zero and can produce a wild slope from an almost pure noise overlap.
+                                # The fit is also required to be believable before it is applied: too few
+                                # common voxels, a non-finite slope, a slope outside a generous physical
+                                # window, or a fit that does not actually correlate all mean "no
+                                # information" here, and the tile is left alone rather than scaled by
+                                # garbage that is then applied to the whole volume.
+                                _x = img_slices_j_1[distance_map_red_mask]
+                                _y = intersection_j_1[distance_map_red_mask]
+                                _m = (_x != 0) & (_y != 0)
+                                if _m.sum() < 256:
+                                    slope, intercept = 1.0, 0.0
+                                else:
+                                    slope, intercept, r, p, se = linregress(_x[_m], _y[_m])
+                                    if (not np.isfinite(slope)) or (not np.isfinite(intercept)) \
+                                            or slope <= 0.05 or slope > 20.0 or abs(r) < 0.3:
+                                        slope, intercept = 1.0, 0.0
                                 # Equalize the gray levels on the j_1 image
-                                # img_slices_j_1 = np.where(img_slices_j_1 != 0, (img_slices_j_1 + intercept) * slope, 0)
                                 img_slices_j_1 = np.where(img_slices_j_1 != 0, (img_slices_j_1 * slope + intercept), 0)
                                 # Append to the global collector
                                 layer_equalize_slope_intercept_.append((slope, intercept))
 
                             elif use_existing_equalize:
-                                img_slices_j_1 = np.where(img_slices_j_1 != 0, (img_slices_j_1 + self.layer_equalize_slope_intercept[stitch_layer_][i][1]) * self.layer_equalize_slope_intercept[stitch_layer_][i][0], 0)
+                                # Apply the SAME map that the fit above produced. This used to be
+                                # (img + intercept) * slope, which is a different transform from the
+                                # fitted mosaic ~ slope * tile + intercept -- they agree only when the
+                                # intercept is 0 or the slope is 1 -- so the factors measured on the
+                                # representative slices were applied differently in stitch_layers, leaving
+                                # visible intensity steps at the tile boundaries.
+                                _s, _c = self.layer_equalize_slope_intercept[stitch_layer_][i]
+                                _s, _c = float(_s), float(_c)
+                                if not (np.isfinite(_s) and np.isfinite(_c)) or _s <= 0.05 or _s > 20.0:
+                                    _s, _c = 1.0, 0.0
+                                img_slices_j_1 = np.where(img_slices_j_1 != 0, (img_slices_j_1 * _s + _c), 0)
 
                             # for any debugging
                             # with h5py.File(f"/data/visitors/danmax/20240666/2024101508/process/trial_stitch_endri/test_stitch_SiNMC_1_overview1_offlineServer/distance_map_red_{i}.h5", "w") as h5f: h5f.create_dataset("image", data=distance_map_red)

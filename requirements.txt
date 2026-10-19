@@ -1,3 +1,13 @@
+# Convenience list for development and CI. This is NOT the authoritative
+# dependency list -- pyproject.toml is, and `pip install -e .` installs from it.
+# Keep this file in step with pyproject.toml: past drift had scikit-image and
+# pandas listed here and in pyproject.toml although neither is imported
+# anywhere in the package, the tests, the examples or the notebooks.
+#
+# Extras (danmax / notebook / dev) are flattened below rather than left to
+# `pip install -e ".[...]"`, so that a bare `pip install -r requirements.txt`
+# gives a working development environment.
+
 # Core numerical stack
 numpy>=1.23
 scipy>=1.10
@@ -18,7 +28,6 @@ matplotlib>=3.7
 
 # Utilities
 tqdm>=4.65
-pandas>=1.5
 
 # Optional — DanMAX beamline helpers
 ipywidgets>=8.0

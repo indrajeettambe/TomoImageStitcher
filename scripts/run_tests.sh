@@ -10,7 +10,10 @@ cd "$(dirname "$0")/.."
 pip install -e ".[dev]"
 
 # CPU tests (no GPU required)
-pytest tests/test_utilities.py -v
+pytest tests/test_utilities.py tests/test_transform.py -v
 
-# GPU tests (auto-skipped when no CUDA device)
-pytest tests/ -v -m gpu || echo "GPU tests skipped or failed (this is expected on CPU-only hosts)."
+# GPU tests. These skip cleanly when no CUDA device is visible (see
+# tests/conftest.py), so a non-zero exit here means a genuine failure on a host
+# that does have a GPU -- it must not be swallowed, or real regressions on GPU
+# machines go unnoticed.
+pytest tests/ -v -m gpu

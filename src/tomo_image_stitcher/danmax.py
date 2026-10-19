@@ -30,19 +30,25 @@ try:
     from ipywidgets import interact
     from pyFAI import geometry
     import pytz
-except BaseException:
-    print('Change to HDF5 server to load all modules')
+except BaseException as _exc:
+    # These are optional and only used by the beamline helpers below. The
+    # module still imports without them, but any helper that actually uses them
+    # will raise NameError later, so say what is missing rather than printing
+    # something unrelated to the actual cause.
+    print(f'Optional beamline dependencies unavailable ({_exc!r}); '
+          'pyFAI/pytz/ipywidgets helpers in this module will not work. '
+          'Install them with: pip install "tomo-image-stitcher[danmax]"')
 
 # Importing DanMAX libraries for specialized functionality
 # Done in try statements to catch different jupyter environments
 try:
     from lib.misc import *  # noqa: F401,F403  (DanMAX beamline helper)
-except BaseException:
-    print('Unable to load lib/misc.py')
+except BaseException as _exc:
+    print(f'DanMAX lib.misc unavailable ({_exc!r}); its helpers are not defined')
 try:
     from lib import parallel
-except BaseException:
-    print('Unable to load lib/parallel.py')
+except BaseException as _exc:
+    print(f'DanMAX lib.parallel unavailable ({_exc!r}); not defined')
 
 
 def pi(engineer=False):

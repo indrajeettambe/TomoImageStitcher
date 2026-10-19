@@ -6,7 +6,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tomo-image-stitcher"
-version = "0.2.0"
+# Single source of truth for the version is __init__.py; read it from there
+# rather than repeating the string, so the two cannot drift apart.
+dynamic = ["version"]
 description = "GPU-accelerated 3D volumetric stitcher for tomographic and microscopy volumes."
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -37,7 +39,6 @@ dependencies = [
     "tifffile>=2023.4",
     "imagecodecs>=2023.1",
     "SimpleITK>=2.3",
-    "scikit-image>=0.20",
     "matplotlib>=3.7",
     "tqdm>=4.65",
     "cupy-cuda12x>=13.0; sys_platform != 'darwin'",
@@ -67,6 +68,9 @@ all = ["tomo-image-stitcher[danmax,notebook,dev]"]
 Homepage = "https://github.com/indrajeettambe/TomoImageStitcher"
 Issues = "https://github.com/indrajeettambe/TomoImageStitcher/issues"
 Documentation = "https://github.com/indrajeettambe/TomoImageStitcher/tree/main/docs"
+
+[tool.setuptools.dynamic]
+version = {attr = "tomo_image_stitcher.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -76,7 +76,16 @@ Pick the wheel that matches the runtime CUDA version reported by
 |--------------|--------------------------------|
 | 12.x         | `pip install cupy-cuda12x`     |
 | 11.x         | `pip install cupy-cuda11x`     |
-| CPU fallback | `pip install cupy-cuda11x==13.0 --install-option="--no-cuda"` |
+| CPU fallback | `conda install -c conda-forge cupy` (see note below) |
+
+Note on the CPU fallback: earlier versions of this page recommended
+`pip install cupy-cuda11x==13.0 --install-option="--no-cuda"`. That no longer
+works — pip removed `--install-option` in 23.1 in favour of `--config-settings`,
+so the command now fails with `no such option: --install-option`. The replacement
+above is the supported route. Note also that a CPU-only CuPy is not equivalent
+to a CUDA build for this project: the correlation engine dispatches to CuPy
+kernels, so the GPU paths still require a CUDA-capable device. Use the CPU
+fallback only for import-time checks and for running the non-GPU test suite.
 
 See the [CuPy installation page](https://docs.cupy.dev/en/stable/install.html)
 for the full table of supported combinations.

@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `use_existing_equalize` applies the same validity check to the factors it reads.
   *(Indrajeet Tambe, 2026-10-19)*
 
+* danmax: the optional-import guards caught `BaseException` rather than
+  `ImportError`. `BaseException` also covers `KeyboardInterrupt` and
+  `SystemExit`, so interrupting a slow import (pyFAI is large, and `lib.misc`
+  may sit on a network filesystem at the beamline) was swallowed and reported as
+  an unavailable dependency; execution then continued with the helper names
+  undefined and failed later as a `NameError` somewhere unrelated. Interrupts
+  now abort, and a module that exists but is broken raises its real error.
+  *(Indrajeet Tambe, 2026-10-20)*
+
 * docs/installation: the documented CPU fallback
   `pip install cupy-cuda11x==13.0 --install-option="--no-cuda"` no longer works.
   pip removed `--install-option` in 23.1 in favour of `--config-settings`, so the

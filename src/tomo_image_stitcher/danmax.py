@@ -26,11 +26,20 @@ import h5py
 import os
 version = '3.6.0'
 
+# These are all optional and only used by the beamline helpers below.
+#
+# The guard is ImportError, not BaseException. BaseException also catches
+# KeyboardInterrupt and SystemExit, so interrupting a slow import -- pyFAI is
+# large, and lib.misc may sit on a network filesystem at the beamline -- was
+# swallowed and reported as an unavailable dependency. Execution then carried
+# on with the helper names undefined and failed later as a NameError somewhere
+# unrelated. Let an interrupt abort, and let a module that exists but is broken
+# raise its real error.
 try:
     from ipywidgets import interact
     from pyFAI import geometry
     import pytz
-except BaseException as _exc:
+except ImportError as _exc:
     # These are optional and only used by the beamline helpers below. The
     # module still imports without them, but any helper that actually uses them
     # will raise NameError later, so say what is missing rather than printing
@@ -43,11 +52,11 @@ except BaseException as _exc:
 # Done in try statements to catch different jupyter environments
 try:
     from lib.misc import *  # noqa: F401,F403  (DanMAX beamline helper)
-except BaseException as _exc:
+except ImportError as _exc:
     print(f'DanMAX lib.misc unavailable ({_exc!r}); its helpers are not defined')
 try:
     from lib import parallel
-except BaseException as _exc:
+except ImportError as _exc:
     print(f'DanMAX lib.parallel unavailable ({_exc!r}); not defined')
 
 

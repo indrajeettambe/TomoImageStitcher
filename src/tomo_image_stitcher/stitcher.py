@@ -36,6 +36,51 @@ except ImportError:  # pragma: no cover - allows CPU-only environments
     CUPY_AVAILABLE = False
 
 
+MIN_EQUALISATION_SLOPE = 0.05
+MAX_EQUALISATION_SLOPE = 20.0
+
+
+def valid_equalisation_factors(slope, intercept):
+    """Return usable ``(slope, intercept)``, or identity if they are not.
+
+    The fit that produces these is ``linregress(tile, mosaic)``, so the factors
+    describe the map ``mosaic ~ slope * tile + intercept``. A fit can still be
+    nonsense -- too few common voxels, a non-finite value, or a slope so far
+    from 1 that it is almost certainly noise -- and applying that to the whole
+    volume is worse than leaving the tile alone.
+
+    The bounds are deliberately wide. A real overlap can need a genuine gain of
+    two or three, so this only rejects values that cannot be physical.
+    """
+    try:
+        slope = float(slope)
+        intercept = float(intercept)
+    except (TypeError, ValueError):
+        return 1.0, 0.0
+    if not (np.isfinite(slope) and np.isfinite(intercept)):
+        return 1.0, 0.0
+    if slope <= MIN_EQUALISATION_SLOPE or slope > MAX_EQUALISATION_SLOPE:
+        return 1.0, 0.0
+    return slope, intercept
+
+
+def apply_equalisation(img, slope, intercept):
+    """Map a tile's grey levels onto the mosaic it is being blended into.
+
+    This is the single definition of the transform, shared by the branch that
+    fits the factors and the branch that reuses stored ones. Those two used to
+    be written out separately, one as ``img * slope + intercept`` and the other
+    as ``(img + intercept) * slope``. They agree only when ``intercept == 0`` or
+    ``slope == 1``, so the factors measured on the representative slices were
+    applied differently to the full volume and left a step at every tile edge.
+
+    Zeros are preserved: the circular mask writes zeros inside the blend region
+    and those are background, not data.
+    """
+    slope, intercept = valid_equalisation_factors(slope, intercept)
+    return np.where(img != 0, img * slope + intercept, 0)
+
+
 class Stitcher:
     def __init__(self, file_path_list, physical_coordinates, mm_per_voxel, x_y_z_correspondance=(1, 2, 3), saving_path=None):
         """
@@ -1602,26 +1647,23 @@ class Stitcher:
                                     slope, intercept = 1.0, 0.0
                                 else:
                                     slope, intercept, r, p, se = linregress(_x[_m], _y[_m])
-                                    if (not np.isfinite(slope)) or (not np.isfinite(intercept)) \
-                                            or slope <= 0.05 or slope > 20.0 or abs(r) < 0.3:
+                                    if abs(r) < 0.3:
                                         slope, intercept = 1.0, 0.0
+                                slope, intercept = valid_equalisation_factors(slope, intercept)
                                 # Equalize the gray levels on the j_1 image
-                                img_slices_j_1 = np.where(img_slices_j_1 != 0, (img_slices_j_1 * slope + intercept), 0)
+                                img_slices_j_1 = apply_equalisation(img_slices_j_1, slope, intercept)
                                 # Append to the global collector
                                 layer_equalize_slope_intercept_.append((slope, intercept))
 
                             elif use_existing_equalize:
-                                # Apply the SAME map that the fit above produced. This used to be
-                                # (img + intercept) * slope, which is a different transform from the
-                                # fitted mosaic ~ slope * tile + intercept -- they agree only when the
-                                # intercept is 0 or the slope is 1 -- so the factors measured on the
-                                # representative slices were applied differently in stitch_layers, leaving
-                                # visible intensity steps at the tile boundaries.
+                                # Same transform as the fit branch above, by construction:
+                                # both go through apply_equalisation. This used to be written
+                                # out here as (img + intercept) * slope, a different map from
+                                # the fitted mosaic ~ slope * tile + intercept, so the factors
+                                # measured on the representative slices were applied
+                                # differently to the rest of the volume.
                                 _s, _c = self.layer_equalize_slope_intercept[stitch_layer_][i]
-                                _s, _c = float(_s), float(_c)
-                                if not (np.isfinite(_s) and np.isfinite(_c)) or _s <= 0.05 or _s > 20.0:
-                                    _s, _c = 1.0, 0.0
-                                img_slices_j_1 = np.where(img_slices_j_1 != 0, (img_slices_j_1 * _s + _c), 0)
+                                img_slices_j_1 = apply_equalisation(img_slices_j_1, _s, _c)
 
                             # for any debugging
                             # with h5py.File(f"/data/visitors/danmax/20240666/2024101508/process/trial_stitch_endri/test_stitch_SiNMC_1_overview1_offlineServer/distance_map_red_{i}.h5", "w") as h5f: h5f.create_dataset("image", data=distance_map_red)

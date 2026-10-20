@@ -5,12 +5,29 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # Nightly at 03:17 UTC. Deliberately not on the hour: jobs queued at :00
+    # wait behind everyone else's and can start many minutes late.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# Read-only by default. Only the job that files the nightly issue asks for
+# anything more, so no other step in this workflow can write to the repository.
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 jobs:
   cpu:
     name: CPU tests (no GPU)
     runs-on: ubuntu-latest
     strategy:
+      # Let every Python version finish, so a nightly failure reports all the
+      # legs that broke instead of whichever one happened to fail first.
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
@@ -40,10 +57,86 @@ jobs:
           # Everything that does not need a GPU. The GPU-marked tests are
           # skipped by tests/conftest.py when no device is present, so simply
           # running the whole suite here is safe on a CPU-only runner.
+          #
+          # On the nightly schedule this runs against the newest release of
+          # every dependency without pinning anything, which is the point: an
+          # upstream release that breaks the package shows up here before a
+          # user hits it, rather than as a bug report.
           pytest tests/ -v --cov=tomo_image_stitcher --cov-report=term-missing
+
+  nightly-failure:
+    name: File an issue if the nightly run failed
+    needs: cpu
+    # Two conditions on purpose: only the scheduled run files an issue, so a
+    # red pull request stays red in the pull request instead of landing in the
+    # tracker, and nothing is filed when the run passes.
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read   # list this run's jobs to name the legs that failed
+      issues: write   # open, or comment on, the tracking issue
+      contents: read
+    steps:
+      - name: Open or update the tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = 'nightly: CPU tests are failing';
+            const { owner, repo } = context.repo;
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+
+            // Name the legs that actually failed, so the issue points at a
+            // Python version instead of just saying the build is red.
+            const { data } = await github.rest.actions.listJobsForWorkflowRun({
+              owner, repo, run_id: context.runId, per_page: 100,
+            });
+            const legs = data.jobs
+              .filter(j => j.conclusion === 'failure')
+              .map(j => {
+                const steps = (j.steps || [])
+                  .filter(s => s.conclusion === 'failure')
+                  .map(s => s.name);
+                return `- \`${j.name}\`${steps.length ? ` — failing step: **${steps.join(', ')}**` : ''}`;
+              });
+
+            // Reuse one open issue while it stays open, so a dependency that
+            // stays broken for a week leaves one issue, not seven. listForRepo
+            // is used instead of the search API because search lags a freshly
+            // created issue by a few seconds and would open duplicates.
+            const open = await github.rest.issues.listForRepo({
+              owner, repo, state: 'open', per_page: 100,
+            });
+            const existing = open.data.find(i => i.title === marker && !i.pull_request);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: existing.number,
+                body: `Still failing (${new Date().toISOString().slice(0, 10)}).\n\n${legs.join('\n')}\n\n[Run](${runUrl})`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner, repo, title: marker,
+                body: [
+                  `The nightly CPU run failed on \`${context.ref}\`.`,
+                  '',
+                  ...legs,
+                  '',
+                  `Run: ${runUrl}`,
+                  '',
+                  'The nightly job installs the newest release of every dependency, so a',
+                  'failure here usually means an upstream release broke the package rather',
+                  'than a commit in this repository. Compare with the last green run before',
+                  'assuming the code changed.',
+                ].join('\n'),
+              });
+            }
 
   gpu:
     name: GPU tests
+    # Only on pushes and pull requests. Waking the self-hosted GPU box every
+    # night is unnecessary, and a runner that happens to be offline would file
+    # a nightly failure that is not a real one.
+    if: github.event_name != 'schedule'
     runs-on: [self-hosted, gpu]
     steps:
       - uses: actions/checkout@v4

@@ -41,6 +41,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now abort, and a module that exists but is broken raises its real error.
   *(Indrajeet Tambe, 2026-10-20)*
 
+* `stitch_layers`: each layer's output dataset was sized with that layer's
+  padding but with the tile extents of layer 0, image 0. With homogeneous tiles
+  the two values coincide, so nothing changed in practice; with tiles that
+  differ in y or x between layers, every layer after the first was silently
+  cropped or padded to the first one's geometry. The size is now computed once
+  per layer, from that layer's own extents, by `mosaic_plane_shape`.
+  *(Indrajeet Tambe, 2026-10-21)*
+
 * docs/installation: the documented CPU fallback
   `pip install cupy-cuda11x==13.0 --install-option="--no-cuda"` no longer works.
   pip removed `--install-option` in 23.1 in favour of `--config-settings`, so the

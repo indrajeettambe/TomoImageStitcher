@@ -1927,6 +1927,28 @@ class Stitcher:
 
         return results
 
+    def mosaic_plane_shape(self, layer_inx):
+        """Height and width of the mosaic written for one layer.
+
+        The padding terms have always been taken per layer. The tile extents
+        were not: ``shape``, ``maxshape`` and ``chunks`` all used layer 0,
+        image 0, so a dataset whose tiles differ in y or x between layers was
+        sized from the first layer and every later layer was silently cropped
+        or padded to match. That mixed two different layers in one size.
+
+        With homogeneous tiles -- the normal case -- every layer returns the
+        value it always did, so nothing changes for existing data.
+        """
+        left = self.layers_outer_most_left_xyz[layer_inx][0]
+        right = self.layers_outer_most_right_xyz[layer_inx][0]
+        height = (self.padding_neg_y[layer_inx][0] + self.padding_pos_y[layer_inx][0]
+                  + right[1] + left[1]
+                  - np.sum(self.params_final["crop_y"]))
+        width = (self.padding_neg_x[layer_inx][0] + self.padding_pos_x[layer_inx][0]
+                 + right[0] + left[0]
+                 - np.sum(self.params_final["crop_x"]))
+        return int(height), int(width)
+
     def stitch_layers(self, chunk_size_series=200, chunk_size_parallel=10, n_cores=10, use_existing_equalize=None, path_save=None, check=False):
         """
         This method will stitch the layers individually and save them as h5 files.
@@ -1989,17 +2011,16 @@ class Stitcher:
                     )
                 """
 
+                # One size, computed once per layer, for shape, maxshape and
+                # chunks. These used to be three inline copies of the same
+                # expression, which is how the layer-0 extents survived in all
+                # three of them.
+                mosaic_height, mosaic_width = self.mosaic_plane_shape(layer_inx)
                 img_dataset = h5_file.create_dataset(
                     "stitched_image",
-                    shape=(self.img_depth,
-                           self.padding_neg_y[layer_inx][0] + self.padding_pos_y[layer_inx][0] + (self.layers_outer_most_right_xyz[0][0][1] + self.layers_outer_most_left_xyz[0][0][1]) - np.sum(self.params_final["crop_y"]),
-                           self.padding_neg_x[layer_inx][0] + self.padding_pos_x[layer_inx][0] + (self.layers_outer_most_right_xyz[0][0][0] + self.layers_outer_most_left_xyz[0][0][0]) - np.sum(self.params_final["crop_x"])),
-                    maxshape=(None,
-                              self.padding_neg_y[layer_inx][0] + self.padding_pos_y[layer_inx][0] + (self.layers_outer_most_right_xyz[0][0][1] + self.layers_outer_most_left_xyz[0][0][1]) - np.sum(self.params_final["crop_y"]),
-                              self.padding_neg_x[layer_inx][0] + self.padding_pos_x[layer_inx][0] + (self.layers_outer_most_right_xyz[0][0][0] + self.layers_outer_most_left_xyz[0][0][0]) - np.sum(self.params_final["crop_x"])),
-                    chunks=(1,
-                            self.padding_neg_y[layer_inx][0] + self.padding_pos_y[layer_inx][0] + (self.layers_outer_most_right_xyz[0][0][1] + self.layers_outer_most_left_xyz[0][0][1]) - np.sum(self.params_final["crop_y"]),
-                            self.padding_neg_x[layer_inx][0] + self.padding_pos_x[layer_inx][0] + (self.layers_outer_most_right_xyz[0][0][0] + self.layers_outer_most_left_xyz[0][0][0]) - np.sum(self.params_final["crop_x"])),
+                    shape=(self.img_depth, mosaic_height, mosaic_width),
+                    maxshape=(None, mosaic_height, mosaic_width),
+                    chunks=(1, mosaic_height, mosaic_width),
                     dtype='float32'
                     )
 

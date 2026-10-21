@@ -1,4 +1,4 @@
-# Install with: pip install -e .
+# Install with: pip install -e ".[gpu12]"   (CUDA 11: .[gpu11], CPU-only: .)
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
@@ -31,6 +31,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Image Processing",
 ]
 requires-python = ">=3.9"
+# CuPy is deliberately NOT a normal dependency. Its wheels are built against a
+# specific CUDA version, so a single pin installs a wheel that cannot work for
+# anyone on a different driver: the import succeeds and the first kernel launch
+# fails with cudaErrorInsufficientDriver. Pick one of the gpu11 / gpu12 extras
+# instead. See docs/installation.md.
 dependencies = [
     "numpy>=1.23",
     "scipy>=1.10",
@@ -41,10 +46,11 @@ dependencies = [
     "SimpleITK>=2.3",
     "matplotlib>=3.7",
     "tqdm>=4.65",
-    "cupy-cuda12x>=13.0; sys_platform != 'darwin'",
 ]
 
 [project.optional-dependencies]
+gpu11 = ["cupy-cuda11x>=13.0"]
+gpu12 = ["cupy-cuda12x>=13.0"]
 danmax = [
     "ipywidgets>=8.0",
     "pyFAI>=2023.1",
@@ -61,7 +67,11 @@ dev = [
     "black>=23.0",
     "flake8>=6.0",
     "isort>=5.12",
+    # tomllib is 3.11+; the packaging tests read pyproject.toml on 3.9/3.10 too.
+    "tomli>=2.0; python_version < '3.11'",
 ]
+# The GPU extras are deliberately excluded: they are mutually exclusive and
+# depend on the machine, so "all" would have to guess the user's CUDA version.
 all = ["tomo-image-stitcher[danmax,notebook,dev]"]
 
 [project.urls]

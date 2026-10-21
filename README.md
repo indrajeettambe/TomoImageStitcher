@@ -59,19 +59,18 @@ blending lives in [PUBLICATION].
 
 ## Install
 
-TomoImageStitcher is on PyPI. A CUDA-capable GPU with the matching CuPy wheel
-is required for the GPU stages; everything else is plain Python.
+TomoImageStitcher is on PyPI. A CUDA-capable GPU with a matching CuPy wheel is
+required for the GPU stages; everything else is plain Python. CuPy ships as the
+`gpu11` and `gpu12` extras because each wheel is built against one CUDA version.
 
 ```bash
 # 1. (Recommended) a clean environment
 python -m venv .venv && source .venv/bin/activate
 
-# 2. Install with the notebook extras
+# 2. Install with the notebook extras and the CuPy wheel for your CUDA version
+#    (CUDA 12.x shown; use gpu11 for CUDA 11.x, or omit the extra for CPU-only)
 pip install -U pip
-pip install "tomo-image-stitcher[notebook,danmax]"
-
-# 3. Install CuPy matching your CUDA version (CUDA 12.x shown)
-pip install cupy-cuda12x
+pip install "tomo-image-stitcher[gpu12,notebook,danmax]"
 ```
 
 If you cannot install `git`, or you are behind a proxy that blocks it:

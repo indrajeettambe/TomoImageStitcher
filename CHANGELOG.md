@@ -117,6 +117,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the cause. The module still imports without the optional dependencies; only
   the message changed. *(Indrajeet Tambe, 2026-10-19)*
 
+### Changed
+
+* CuPy is now installed through the `gpu11` / `gpu12` extras instead of being a
+  normal dependency pinned to `cupy-cuda12x`. A CuPy wheel is built against one
+  CUDA version, so the pin installed a wheel that could not work for anyone on a
+  different driver: the import succeeded and the first kernel launch failed with
+  `cudaErrorInsufficientDriver`. `pip install tomo-image-stitcher` still works
+  and now installs no CUDA dependency at all; GPU users add `[gpu12]` or
+  `[gpu11]`. The docs, README, CI and requirements.txt use the extras, and
+  `tests/test_packaging.py` fails if a CuPy wheel drifts back into the normal
+  dependencies. While updating requirements.txt, removed the `scikit-image`
+  entry that the earlier packaging cleanup left behind there.
+  *(Indrajeet Tambe, 2026-10-21)*
+
 ## [0.2.0] - 2025-01-01
 
 Initial public release. Includes:

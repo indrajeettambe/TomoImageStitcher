@@ -50,33 +50,46 @@ the version you should match when installing CuPy.
 
 ## 4. Install the TomoImageStitcher package
 
-Clone the repository and install in editable mode:
+Clone the repository and install in editable mode, choosing the CuPy extra that
+matches the CUDA runtime reported by `nvidia-smi`:
 
 ```bash
 git clone https://github.com/indrajeettambe/TomoImageStitcher.git
 cd TomoImageStitcher
-pip install -e .
+
+# CUDA 12.x
+pip install -e ".[gpu12]"
+
+# or CUDA 11.x
+pip install -e ".[gpu11]"
 ```
 
-This installs the core `tomo_image_stitcher` package.
+CuPy is an extra rather than a normal dependency on purpose: each wheel is built
+against one CUDA version, so a single default would install a wheel that cannot
+work for anyone on a different driver. Importing it would succeed and the first
+kernel launch would fail with `cudaErrorInsufficientDriver`.
 
-If you plan to use the DanMAX beamline utilities or the example notebooks,
-install the optional extras:
+`pip install -e .` on its own installs the package without CuPy. That is enough
+for the CPU-only test suite, but the GPU stages will not run.
+
+If you plan to use the DanMAX beamline utilities or the example notebooks, add
+those extras too:
 
 ```bash
-pip install -e ".[notebook,danmax]"
+pip install -e ".[gpu12,notebook,danmax]"
 ```
 
-## 5. Install CuPy matching your CUDA version
+## 5. CuPy wheel reference
 
-Pick the wheel that matches the runtime CUDA version reported by
-`nvidia-smi`:
+Step 4 already installs the right wheel through the `gpu11` or `gpu12` extra.
+If you prefer to install CuPy yourself, pick the wheel that matches the runtime
+CUDA version:
 
-| CUDA runtime | Install command                |
-|--------------|--------------------------------|
-| 12.x         | `pip install cupy-cuda12x`     |
-| 11.x         | `pip install cupy-cuda11x`     |
-| CPU fallback | `conda install -c conda-forge cupy` (see note below) |
+| CUDA runtime | Via the extra                  | Manual install                  |
+|--------------|--------------------------------|---------------------------------|
+| 12.x         | `pip install -e ".[gpu12]"`    | `pip install cupy-cuda12x`     |
+| 11.x         | `pip install -e ".[gpu11]"`    | `pip install cupy-cuda11x`     |
+| CPU fallback | —                              | `conda install -c conda-forge cupy` (see note below) |
 
 Note on the CPU fallback: earlier versions of this page recommended
 `pip install cupy-cuda11x==13.0 --install-option="--no-cuda"`. That no longer
@@ -108,9 +121,10 @@ your CUDA driver and make sure you picked the right wheel.
 
 * **"libcudart.so not found"** — the CuPy wheel does not match your CUDA
   runtime. Re-install the right `cupy-cudaXXx` package.
-* **`Stitcher(...)` raises `ImportError: No module named cupy`** — the
-  optional dependency was not installed. Run
-  `pip install cupy-cuda12x` (or matching wheel).
+* **`Stitcher(...)` raises `ImportError: No module named cupy`** — CuPy is an
+  extra, not a normal dependency, so a bare `pip install -e .` leaves it out.
+  Run `pip install -e ".[gpu12]"`, or `.[gpu11]` if `nvidia-smi` reports CUDA
+  11.x.
 * **Out of memory when registering large overlaps** — lower
   `equal_crop_xy` or `crop_x/crop_y`, or split the registration in
   sub-volumes along `z`.

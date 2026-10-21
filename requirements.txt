@@ -7,6 +7,10 @@
 # Extras (danmax / notebook / dev) are flattened below rather than left to
 # `pip install -e ".[...]"`, so that a bare `pip install -r requirements.txt`
 # gives a working development environment.
+#
+# CuPy is listed under "GPU" because an environment needs exactly one of the
+# wheels. The authoritative definitions are the gpu11 / gpu12 extras in
+# pyproject.toml; swap the line below if your CUDA runtime is 11.x.
 
 # Core numerical stack
 numpy>=1.23
@@ -23,7 +27,6 @@ imagecodecs>=2023.1
 
 # Image processing
 SimpleITK>=2.3
-scikit-image>=0.20
 matplotlib>=3.7
 
 # Utilities
@@ -42,6 +45,7 @@ notebook>=7.0
 # Testing
 pytest>=7.3
 pytest-cov>=4.0
+tomli>=2.0; python_version < "3.11"
 
 # Code quality
 black>=23.0

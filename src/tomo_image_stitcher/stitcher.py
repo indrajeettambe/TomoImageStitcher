@@ -1282,6 +1282,7 @@ class Stitcher:
                             correlation_coeff = []  # array keeping the NCC of the correlation between the current subvolume and its central ones
                             displacement_vectors_u = []  # array keeping the accumulated displacements of the central subvolumes of the current one
                             weighted_sum_ncc = 0
+                            total_ncc_weight = 0.0
                             no_accounted_neighbors = 0
                             averaged_disp_current = 0
                             max_affine_global_operator = np.eye(4)
@@ -1304,9 +1305,10 @@ class Stitcher:
                                 # Get the transform operator of the previous layer
                                 operator_matrix = np.array(cumulative_operator_pyramid_sub[expansion_layer - 2])[displacement_pos]
 
-                                # Get the sum of displacements (U_1 + V_1) weighted by the correlation_coef: [NCC_1*(U_1 + V_1) + ...... + NCC_2*(U_2 + V_2)] / len(previous_neighbors) / max(NCC)
+                                # Accumulate accepted displacements and their actual NCC weights.
                                 if (correl_coeff_value[0] > exclude_NCC) and weighted_avg:
                                     weighted_sum_ncc += ((displacement_vector[0] + displacement_vectors_v[i]) * correl_coeff_value[0])
+                                    total_ncc_weight += correl_coeff_value[0]
                                     no_accounted_neighbors += 1
 
                                 elif (correl_coeff_value[0] > max_NCC):
@@ -1322,8 +1324,12 @@ class Stitcher:
                             # Get the weighted average
                             if no_accounted_neighbors != 0:
                                 if weighted_avg:
-                                    averaged_disp_current = weighted_sum_ncc / no_accounted_neighbors / np.max(correlation_coeff)
-                                    NCC = np.mean(correlation_coeff)
+                                    if total_ncc_weight != 0:
+                                        averaged_disp_current = weighted_sum_ncc / total_ncc_weight
+                                        NCC = np.mean(correlation_coeff)
+                                    else:
+                                        averaged_disp_current = np.array([0, 0, 0])
+                                        NCC = 0.0
                                 else:
                                     averaged_disp_current = weighted_sum_ncc
                                     NCC = np.max(correlation_coeff)
